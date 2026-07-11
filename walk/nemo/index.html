@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Nemo — あるけるMV | JP RECORDS</title>
+<meta name="description" content="JP「Nemo」の世界を自分の足で歩けるMV。凍った森を歩くと、その場所に歌詞が浮かぶ。">
+<link rel="canonical" href="https://jp-records.com/walk/nemo/">
+<meta property="og:title" content="Nemo — あるけるMV">
+<meta property="og:description" content="曲の世界を自分の足で歩けるMV。凍った森を歩くと、その場所に歌詞が浮かぶ。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jp-records.com/walk/nemo/">
+<meta property="og:image" content="https://jp-records.com/walk/nemo/assets/img/s001.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#060a18; touch-action:none; }
+  body { font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif; color:#f2ecdf; }
+
+  #stage { position:fixed; inset:0; overflow:hidden; }
+  #world { position:absolute; top:0; left:0; height:100%; will-change:transform; }
+
+  .shot { position:absolute; top:0; height:100%; }
+  .shot img {
+    width:100%; height:100%; object-fit:cover; display:block;
+    -webkit-mask-image:linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+            mask-image:linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  }
+
+  .lyric {
+    position:absolute; top:24%; transform:translateX(-50%);
+    white-space:pre-line; text-align:center; line-height:2.0; letter-spacing:.1em;
+    font-size:clamp(17px, 2.4vh + 0.5vw, 30px); color:#f5efe2;
+    text-shadow:0 0 6px rgba(3,6,16,.95), 0 0 18px rgba(3,6,16,.9), 0 2px 26px rgba(3,6,16,.85);
+    background:radial-gradient(ellipse 60% 55% at center, rgba(4,8,20,.42), transparent 75%);
+    padding:1.2em 1.6em; opacity:0; pointer-events:none; user-select:none; width:max-content; max-width:70vw;
+  }
+
+  #ground {
+    position:absolute; left:0; right:0; bottom:0; height:14vh; pointer-events:none;
+    background:linear-gradient(to bottom, transparent, rgba(3,5,12,.85));
+  }
+  #tint { position:absolute; inset:0; pointer-events:none; transition:background-color 2.5s ease; }
+  #snow { position:absolute; inset:0; pointer-events:none; }
+
+  #player { position:absolute; will-change:transform; pointer-events:none; }
+  #lightpool {
+    position:absolute; pointer-events:none; border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,205,120,.28), rgba(255,190,100,.10) 45%, transparent 70%);
+  }
+
+  #progress { position:absolute; left:0; bottom:0; height:2px; width:0; background:rgba(255,214,140,.45); pointer-events:none; }
+
+  #hint {
+    position:absolute; left:50%; bottom:16vh; transform:translateX(-50%);
+    font-size:clamp(13px, 1.8vh, 17px); letter-spacing:.15em; color:rgba(242,236,223,.75);
+    text-shadow:0 0 10px rgba(3,6,16,.9); transition:opacity 2s; pointer-events:none;
+  }
+
+  .overlay {
+    position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3vh; z-index:10; text-align:center;
+  }
+  #title { background:rgba(4,7,18,.55); transition:opacity 1.8s ease; }
+  #title .bg { position:absolute; inset:0; z-index:-1; overflow:hidden; }
+  #title .bg img { width:100%; height:100%; object-fit:cover; filter:brightness(.35) saturate(.85) blur(2px); }
+  #title h1 { font-size:clamp(44px, 9vh, 88px); font-weight:500; letter-spacing:.3em; text-indent:.3em;
+              text-shadow:0 0 30px rgba(140,190,255,.5), 0 0 60px rgba(140,190,255,.25); }
+  #title .sub { font-size:clamp(14px, 2.2vh, 19px); letter-spacing:.5em; text-indent:.5em; color:rgba(242,236,223,.85); }
+  #start {
+    margin-top:4vh; font-family:inherit; font-size:clamp(16px, 2.4vh, 22px); letter-spacing:.4em; text-indent:.4em;
+    color:#f2ecdf; background:transparent; border:1px solid rgba(242,236,223,.55); border-radius:2em;
+    padding:.9em 2.6em; cursor:pointer; transition:all .4s;
+  }
+  #start:disabled { opacity:.35; cursor:default; }
+  #start:not(:disabled):hover { background:rgba(242,236,223,.12); box-shadow:0 0 24px rgba(255,214,140,.25); }
+  #title .credit { position:absolute; bottom:3vh; font-size:12px; letter-spacing:.2em; color:rgba(242,236,223,.5); }
+
+  #ending { background:#020409; opacity:0; pointer-events:none; transition:opacity 4s ease; z-index:20; }
+  #ending .msg { font-size:clamp(24px, 4.5vh, 44px); letter-spacing:.35em; text-indent:.35em;
+                 opacity:0; transition:opacity 3s ease 1.5s; }
+  #ending #again {
+    font-family:inherit; font-size:clamp(13px, 1.9vh, 17px); letter-spacing:.3em; text-indent:.3em;
+    color:rgba(242,236,223,.7); background:transparent; border:none; cursor:pointer;
+    opacity:0; transition:opacity 2s ease 6s; margin-top:6vh;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="world"></div>
+  <div id="ground"></div>
+  <div id="lightpool"></div>
+  <svg id="player" viewBox="0 0 64 84" aria-hidden="true">
+    <g id="pbody" fill="#0b0f1e">
+      <circle cx="28" cy="16" r="10"/>
+      <path d="M16,28 Q28,21 40,28 L39,60 Q28,67 17,60 Z"/>
+      <rect x="21" y="58" width="6" height="12" rx="3"/>
+      <rect x="30" y="58" width="6" height="12" rx="3"/>
+      <path d="M38,32 Q48,36 52,44" stroke="#0b0f1e" stroke-width="5" stroke-linecap="round" fill="none"/>
+    </g>
+    <line x1="52" y1="44" x2="52" y2="50" stroke="#0b0f1e" stroke-width="2"/>
+    <circle cx="52" cy="55" r="6" fill="#ffd894" opacity=".95"/>
+    <circle cx="52" cy="55" r="10" fill="#ffca70" opacity=".22"/>
+  </svg>
+  <canvas id="snow"></canvas>
+  <div id="tint"></div>
+  <div id="progress"></div>
+  <div id="hint">→ / D で あるく　（タップ長押しでも すすめる）</div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="bg"><img src="assets/img/s001.jpg" alt=""></div>
+  <h1>Nemo</h1>
+  <div class="sub">— あるける MV —</div>
+  <button id="start" disabled>よみこみちゅう…</button>
+  <div class="credit">JP — AI MUSIC #111「Nemo」</div>
+</div>
+
+<div class="overlay" id="ending">
+  <div class="msg">おやすみなさい</div>
+  <button id="again">— もういちど —</button>
+</div>
+
+<script src="assets/data.js"></script>
+<script>
+(() => {
+  const D = WALKMV_DATA;
+  const world = document.getElementById('world');
+  const playerEl = document.getElementById('player');
+  const lightpool = document.getElementById('lightpool');
+  const tint = document.getElementById('tint');
+  const hint = document.getElementById('hint');
+  const progress = document.getElementById('progress');
+  const titleOv = document.getElementById('title');
+  const startBtn = document.getElementById('start');
+  const endingOv = document.getElementById('ending');
+  const OVERLAP = 0.92;              // 見開き同士を8%重ねてマスクで溶かす
+  const ACT_TINT = {1:'rgba(40,70,130,.16)', 2:'rgba(90,50,110,.14)', 3:'rgba(60,10,30,.20)', 4:'rgba(30,26,70,.18)'};
+
+  // ---- 世界の構築 ----
+  const shots = D.shots.map(s => ({...s, el:null, imgEl:null, lyricEls:[], x:0, w:0, aspect:16/9}));
+  let loaded = 0;
+  for (const s of shots) {
+    const div = document.createElement('div');
+    div.className = 'shot';
+    const img = document.createElement('img');
+    img.decoding = 'async';
+    img.onload = () => { s.aspect = img.naturalWidth / img.naturalHeight; onLoad(); };
+    img.onerror = onLoad;
+    img.src = s.img;
+    div.appendChild(img);
+    world.appendChild(div);
+    s.el = div; s.imgEl = img;
+    for (const text of s.lyrics) {
+      const ly = document.createElement('div');
+      ly.className = 'lyric';
+      ly.textContent = text;
+      world.appendChild(ly);
+      s.lyricEls.push(ly);
+    }
+  }
+  const peek = new URLSearchParams(location.search).get('peek'); // 検証用: ?peek=0.5 で行程50%地点から自動開始
+  function onLoad() {
+    loaded++;
+    startBtn.textContent = loaded >= shots.length ? 'はじまり' : `よみこみちゅう… ${Math.round(loaded/shots.length*100)}%`;
+    if (loaded >= shots.length) {
+      layout();
+      startBtn.disabled = false;
+      if (peek !== null) startBtn.click();
+    }
+  }
+
+  // ---- レイアウト ----
+  let vw = 0, vh = 0, worldW = 0, playerH = 0, playerW = 0;
+  function layout() {
+    vw = innerWidth; vh = innerHeight;
+    let x = 0;
+    for (const s of shots) {
+      s.w = vh * s.aspect;
+      s.x = x;
+      s.el.style.left = x + 'px';
+      s.el.style.width = s.w + 'px';
+      const n = s.lyricEls.length;
+      s.lyricEls.forEach((ly, i) => {
+        ly.dataset.x = s.x + s.w * ((i + 1) / (n + 1));
+        ly.style.left = ly.dataset.x + 'px';
+      });
+      x += s.w * OVERLAP;
+    }
+    worldW = x + shots[shots.length - 1].w * (1 - OVERLAP);
+    world.style.width = worldW + 'px';
+    playerH = vh * 0.14; playerW = playerH * 64 / 84;
+    playerEl.style.width = playerW + 'px';
+    playerEl.style.height = playerH + 'px';
+    lightpool.style.width = playerH * 2.6 + 'px';
+    lightpool.style.height = playerH * 0.9 + 'px';
+    snowCv.width = vw; snowCv.height = vh;
+  }
+  addEventListener('resize', layout);
+
+  // ---- 入力 ----
+  const keys = new Set();
+  addEventListener('keydown', e => {
+    if (['ArrowRight','ArrowLeft','KeyD','KeyA'].includes(e.code)) { keys.add(e.code); e.preventDefault(); }
+  });
+  addEventListener('keyup', e => keys.delete(e.code));
+  let touchDir = 0;
+  addEventListener('pointerdown', e => {
+    if (!started || ended) return;
+    touchDir = e.clientX > vw / 2 ? 1 : -1;
+  });
+  addEventListener('pointerup', () => touchDir = 0);
+  addEventListener('pointercancel', () => touchDir = 0);
+  addEventListener('contextmenu', e => e.preventDefault());
+
+  // ---- 雪 ----
+  const snowCv = document.getElementById('snow');
+  const sctx = snowCv.getContext('2d');
+  const SNOW_COUNT = {1:90, 2:45, 3:14, 4:55};
+  const flakes = [];
+  function stepSnow(dt, act, t) {
+    const target = SNOW_COUNT[act] || 40;
+    while (flakes.length < target) flakes.push({ x:Math.random()*vw, y:Math.random()*vh, r:.8+Math.random()*1.9, v:14+Math.random()*30, ph:Math.random()*6.28 });
+    if (flakes.length > target) flakes.length = target;
+    sctx.clearRect(0,0,vw,vh);
+    sctx.fillStyle = 'rgba(235,240,255,.75)';
+    for (const f of flakes) {
+      f.y += f.v * dt;
+      f.x += Math.sin(t*.8 + f.ph) * 12 * dt;
+      if (f.y > vh + 4) { f.y = -4; f.x = Math.random()*vw; }
+      sctx.globalAlpha = .25 + .5 * (f.r-0.8)/1.9;
+      sctx.beginPath(); sctx.arc(f.x, f.y, f.r, 0, 6.28); sctx.fill();
+    }
+    sctx.globalAlpha = 1;
+  }
+
+  // ---- 音 ----
+  const audio = new Audio(D.audio);
+  audio.loop = true;
+  audio.preload = 'auto';
+  function fadeAudio(to, sec) {
+    const from = audio.volume, t0 = performance.now();
+    (function step(now) {
+      const k = Math.min(1, (now - t0) / (sec * 1000));
+      audio.volume = from + (to - from) * k;
+      if (k < 1) requestAnimationFrame(step);
+      else if (to === 0) audio.pause();
+    })(t0);
+  }
+
+  // ---- 進行 ----
+  const SPEED = 380;
+  let px = 0, facing = 1, moving = false, started = false, ended = false;
+  let walkT = 0, lastAct = 0, hintShown = true, moveTime = 0;
+
+  function update(dt, t) {
+    let dir = 0;
+    if (keys.has('ArrowRight') || keys.has('KeyD')) dir += 1;
+    if (keys.has('ArrowLeft') || keys.has('KeyA')) dir -= 1;
+    dir = dir || touchDir;
+    moving = dir !== 0 && !ended;
+    if (moving) {
+      px = Math.max(vw * 0.2, Math.min(worldW - playerW, px + dir * SPEED * dt));
+      facing = dir; walkT += dt; moveTime += dt;
+      if (hintShown && moveTime > 5) { hint.style.opacity = 0; hintShown = false; }
+    }
+    const camX = Math.max(0, Math.min(worldW - vw, px - vw * 0.38));
+    world.style.transform = `translateX(${-camX}px)`;
+
+    const bob = moving ? Math.sin(walkT * 11) * playerH * 0.03 : 0;
+    const py = vh - playerH - vh * 0.055 + bob;
+    playerEl.style.transform = `translate(${px - camX - playerW/2}px, ${py}px) scaleX(${facing})`;
+    lightpool.style.transform = `translate(${px - camX - playerH*1.3}px, ${vh - playerH*0.62}px)`;
+
+    // 歌詞の浮かび
+    const range = vw * 0.30;
+    for (const s of shots) {
+      if (s.x - camX > vw + range || s.x + s.w - camX < -range) {
+        for (const ly of s.lyricEls) ly.style.opacity = 0;
+        continue;
+      }
+      for (const ly of s.lyricEls) {
+        const d = Math.abs(px - ly.dataset.x);
+        const o = Math.max(0, 1 - d / range);
+        ly.style.opacity = (o * o).toFixed(3);
+        ly.style.transform = `translateX(-50%) translateY(${(1 - o) * 14}px)`;
+      }
+    }
+
+    // 幕のトーン
+    const cur = shots.find(s => px >= s.x && px < s.x + s.w * OVERLAP) || shots[shots.length - 1];
+    if (cur.act !== lastAct) { lastAct = cur.act; tint.style.backgroundColor = ACT_TINT[cur.act]; }
+
+    progress.style.width = (px / worldW * 100) + '%';
+    stepSnow(dt, lastAct || 1, t);
+
+    if (!ended && px >= worldW - vw * 0.28) endGame();
+  }
+
+  function endGame() {
+    ended = true;
+    fadeAudio(0, 5);
+    endingOv.style.pointerEvents = 'auto';
+    endingOv.style.opacity = 1;
+    endingOv.querySelector('.msg').style.opacity = 1;
+    document.getElementById('again').style.opacity = 1;
+  }
+  document.getElementById('again').addEventListener('click', () => location.reload());
+
+  // ---- ループ ----
+  let lastT = null;
+  function frame(now) {
+    if (lastT === null) lastT = now;
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+    if (started) update(dt, now / 1000);
+    requestAnimationFrame(frame);
+  }
+
+  startBtn.addEventListener('click', () => {
+    started = true;
+    px = peek !== null ? worldW * parseFloat(peek) : vw * 0.25;
+    audio.volume = 0;
+    audio.play().then(() => fadeAudio(1, 2)).catch(() => {});
+    titleOv.style.opacity = 0;
+    setTimeout(() => titleOv.style.display = 'none', 1900);
+    requestAnimationFrame(frame);
+  });
+})();
+</script>
+</body>
+</html>
