@@ -1,0 +1,103 @@
+:root{
+  --wood:#5c4430;          /* 棚の木 */
+  --wood2:#4a3626;
+  --kraft:#c9b492;         /* クラフト紙 */
+  --kraft2:#bda57f;
+  --tag:#f4ead2;           /* 値札クリーム */
+  --ink:#33291c;
+  --red:#c0392b;           /* 値札の赤 */
+  --sans:"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Yu Gothic","游ゴシック",sans-serif;
+  --cond:"Arial Narrow",Arial,sans-serif;
+}
+html{background:var(--wood)}
+body{margin:0;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+     background:
+       repeating-linear-gradient(90deg,transparent 0 120px,rgba(0,0,0,.05) 120px 122px),
+       linear-gradient(var(--wood),var(--wood2));
+     background-attachment:fixed}
+
+/* ───── 店頭サイン ───── */
+.sign{text-align:center;padding:46px 20px 30px}
+.sign .board{display:inline-block;background:var(--tag);padding:20px 44px 18px;transform:rotate(-.8deg);
+             box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:3px}
+.sign h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:.06em;margin:0}
+.sign h1 span{color:var(--red)}
+.sign .sub{font-family:var(--cond);font-size:11px;letter-spacing:.34em;margin-top:6px}
+.sign nav{margin-top:18px}
+.sign nav a{color:var(--tag);font-size:11px;letter-spacing:.22em;text-decoration:none;margin:0 14px;opacity:.85}
+.sign nav a:hover{opacity:1;text-decoration:underline}
+
+/* ───── 正方形スリーブ: 16:9のジャケを切らずに、余白は同ジャケのぼかしで満たす ───── */
+.sq{position:relative;aspect-ratio:1;overflow:hidden;background:#181410}
+.sq .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+        transform:scale(1.4);filter:blur(14px) saturate(1.15) brightness(.72)}
+.sq .fg{position:absolute;top:50%;left:0;width:100%;transform:translateY(-50%);display:block;
+        box-shadow:0 0 22px rgba(0,0,0,.5)}
+
+/* ───── 今週のイチオシ（最新曲）───── */
+.pick{max-width:880px;margin:10px auto 54px;padding:0 24px;display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:36px;align-items:center}
+.pick .sleeve{position:relative;transform:rotate(-2deg)}
+.pick .sleeve .sq{border:10px solid #fff;box-sizing:border-box;
+                  box-shadow:0 14px 30px rgba(0,0,0,.45);border-radius:2px}
+.pick .pop{position:absolute;top:-16px;right:-14px;background:var(--red);color:#fff;font-weight:800;
+           font-size:12px;letter-spacing:.1em;padding:9px 13px;transform:rotate(6deg);border-radius:3px;
+           box-shadow:0 4px 10px rgba(0,0,0,.3)}
+.pick .txt{background:var(--tag);padding:26px 30px;border-radius:3px;transform:rotate(.5deg);
+           box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.pick .label{font-family:var(--cond);font-size:10px;letter-spacing:.3em;color:var(--red);margin-bottom:10px}
+.pick h2{font-size:clamp(22px,3vw,32px);margin:0 0 10px;line-height:1.3;text-wrap:balance}
+.pick .meta{font-size:12px;opacity:.65;margin-bottom:20px}
+.pick a{display:inline-block;background:var(--ink);color:var(--tag);text-decoration:none;font-size:12px;
+        font-weight:700;letter-spacing:.18em;padding:11px 22px;border-radius:3px;border:none;
+        font-family:var(--sans);cursor:pointer}
+.pick a:hover{background:var(--red);color:#fff}
+
+/* ───── クレート ───── */
+.crate{max-width:1200px;margin:0 auto 60px;padding:26px 26px 34px;box-sizing:border-box;
+       background:linear-gradient(var(--kraft),var(--kraft2));border-radius:6px;
+       border:14px solid var(--wood2);border-top-width:10px;
+       box-shadow:inset 0 10px 24px rgba(0,0,0,.22),0 16px 34px rgba(0,0,0,.4)}
+.crate .divider{display:inline-block;background:var(--tag);font-family:var(--cond);font-weight:700;
+                font-size:12px;letter-spacing:.3em;padding:10px 26px 8px;margin:-40px 0 22px 8px;
+                border-radius:4px 4px 0 0;box-shadow:0 -3px 8px rgba(0,0,0,.15);transform:rotate(-.6deg)}
+.crate .divider b{color:var(--red)}
+.bin{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px 14px}
+.rec{position:relative;cursor:pointer;content-visibility:auto;contain-intrinsic-size:150px 180px}
+.rec .vinyl{position:absolute;left:6%;right:6%;top:0;aspect-ratio:1;border-radius:50%;
+            background:radial-gradient(circle,var(--dom,#888) 0 18%,#111 19% 60%,#181818 61% 100%);
+            transition:transform .4s cubic-bezier(.2,.7,.3,1.2)}
+.rec .sq{border:6px solid #fff;box-sizing:border-box;border-radius:2px;
+         box-shadow:0 5px 12px rgba(0,0,0,.3);transition:transform .35s}
+.rec:nth-child(odd) .sq{transform:rotate(-1.1deg)}
+.rec:nth-child(even) .sq{transform:rotate(1deg)}
+.rec:hover .vinyl,.rec:focus-visible .vinyl{transform:translateY(-26%)}
+.rec:hover .sq,.rec:focus-visible .sq{transform:rotate(0) translateY(3px)}
+.rec .t{margin-top:7px;font-size:11px;line-height:1.5;text-align:center;
+        white-space:nowrap;text-overflow:ellipsis;overflow:hidden;opacity:.8}
+
+/* ───── modal（埋め込み再生）───── */
+.modal{position:fixed;inset:0;display:none;place-items:center;z-index:50;background:rgba(40,28,16,.78)}
+.modal.open{display:grid}
+.card{width:min(94vw,640px);background:var(--tag);border-radius:4px;padding:22px;position:relative;
+      box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.card .player{aspect-ratio:16/9;background:#000;margin-bottom:16px;border:6px solid #fff;
+              box-sizing:border-box;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+.card .player iframe{width:100%;height:100%;display:block;border:none}
+.card h3{font-size:20px;margin:0 0 6px;line-height:1.35}
+.card .m{font-size:11.5px;opacity:.65;margin-bottom:16px}
+.card a{display:block;text-align:center;background:var(--ink);color:var(--tag);text-decoration:none;
+        font-size:12px;font-weight:700;letter-spacing:.2em;padding:12px;border-radius:3px}
+.card a:hover{background:var(--red);color:#fff}
+.card .x{position:absolute;top:8px;right:12px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink);z-index:1}
+
+footer{text-align:center;color:var(--kraft);font-size:11px;letter-spacing:.2em;padding:10px 20px 46px}
+footer a{color:var(--kraft);margin:0 12px}
+
+@media (max-width:700px){
+  .pick{grid-template-columns:1fr;gap:26px;margin-bottom:40px}
+  .pick .sleeve{max-width:300px;margin:0 auto}
+  .crate{margin:0 12px 40px;padding:18px 14px 24px;border-width:10px}
+  .bin{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:14px 10px}
+  .card{padding:14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
