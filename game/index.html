@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GAME — JP RECORDS</title>
+<meta name="description" content="JPの曲があそべる小さなゲームたち。歩けるMV、謎解きノベル、遊べる嘘RPG、記憶の間違い探し。">
+<meta property="og:title" content="GAME — JP RECORDS">
+<meta property="og:description" content="1曲＝1つの遊べる小さな物語。JPの曲があそべるゲームコーナー。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jp-records.com/game/">
+<meta property="og:image" content="https://jp-records.com/walk/nemo/assets/img/s001.jpg">
+<link rel="canonical" href="https://jp-records.com/game/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23181818'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23c0392b'/%3E%3Ccircle cx='16' cy='16' r='1.6' fill='%23181818'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../style.css">
+<style>
+  .gamecrate{max-width:1000px}
+  .gbin{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:30px 24px;padding:6px 4px}
+  .gcard{text-decoration:none;color:var(--ink);display:block}
+  .gcard .shot{position:relative;aspect-ratio:16/9;overflow:hidden;border:8px solid #fff;border-radius:2px;
+               box-sizing:border-box;box-shadow:0 10px 22px rgba(0,0,0,.38);transition:transform .3s}
+  .gcard:nth-child(odd) .shot{transform:rotate(-1deg)}
+  .gcard:nth-child(even) .shot{transform:rotate(.9deg)}
+  .gcard:hover .shot{transform:rotate(0) translateY(-4px)}
+  .gcard .shot img{width:100%;height:100%;object-fit:cover;display:block}
+  .gcard .shot .play{position:absolute;right:8px;bottom:8px;background:var(--red);color:#fff;font-weight:800;
+                     font-size:11px;letter-spacing:.16em;padding:6px 12px;border-radius:3px;
+                     box-shadow:0 3px 8px rgba(0,0,0,.35)}
+  .gcard .tag{background:var(--tag);margin:-6px 10px 0;position:relative;padding:12px 14px 11px;border-radius:3px;
+              box-shadow:0 5px 12px rgba(0,0,0,.25);transform:rotate(-.4deg)}
+  .gcard:nth-child(even) .tag{transform:rotate(.4deg)}
+  .gcard .tag h2{margin:0;font-size:16px;line-height:1.4}
+  .gcard .tag .kind{font-family:var(--cond);font-size:10px;letter-spacing:.26em;color:var(--red);margin-bottom:4px}
+  .gcard .tag .desc{font-size:12px;line-height:1.6;opacity:.75;margin-top:6px}
+  .gcard .tag .meta{font-size:10.5px;opacity:.55;margin-top:6px}
+  .gnote{max-width:1000px;margin:-30px auto 60px;padding:0 26px;color:var(--tag);font-size:11.5px;
+         letter-spacing:.08em;opacity:.8;text-align:center}
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="board">
+    <h1>GAME <span>CORNER</span></h1>
+    <div class="sub">PLAYABLE SONGS — 1曲＝1つの あそべる ちいさな物語</div>
+  </div>
+  <nav>
+    <a href="/">← JP RECORDS</a>
+    <a href="https://www.youtube.com/@JP-ow2gi" target="_blank" rel="noopener">YOUTUBE</a>
+  </nav>
+</header>
+
+<section class="crate gamecrate">
+  <div class="divider">GAMES — <b>4</b></div>
+  <div class="gbin">
+
+    <a class="gcard" href="/walk/nemo/">
+      <div class="shot"><img src="/walk/nemo/assets/img/s001.jpg" alt="Nemo あるけるMV" loading="lazy"><span class="play">PLAY ▶</span></div>
+      <div class="tag">
+        <div class="kind">WALKABLE MV</div>
+        <h2>Nemo — あるけるMV</h2>
+        <div class="desc">凍った夜の森を、自分の足で歩けるMV。歩いた場所に歌詞が浮かぶ。</div>
+        <div class="meta">#111「Nemo」／約5分／操作は→キー・タップ長押し</div>
+      </div>
+    </a>
+
+    <a class="gcard" href="/game/puzzle/">
+      <div class="shot"><img src="/game/puzzle/assets/img/title.jpg" alt="パズル 謎解きノベル" loading="lazy"><span class="play">PLAY ▶</span></div>
+      <div class="tag">
+        <div class="kind">MYSTERY NOVEL</div>
+        <h2>パズル — 足りない一枚の謎解きノベル</h2>
+        <div class="desc">欠けた穴だけが、くっきり残る。銅版画の一夜を解く5つの謎。</div>
+        <div class="meta">#114「パズル」／約10〜15分／ヒントあり</div>
+      </div>
+    </a>
+
+    <a class="gcard" href="/game/yusha/">
+      <div class="shot"><img src="/game/yusha/assets/img/s001.jpg" alt="現代の勇者 Re: 遊べる嘘RPG" loading="lazy"><span class="play">PLAY ▶</span></div>
+      <div class="tag">
+        <div class="kind">FAKE RPG (PLAYABLE)</div>
+        <h2>現代の勇者 Re: — 遊べる嘘RPG</h2>
+        <div class="desc">ダンジョンはない。魔物もいない。それでも勇者でいたい。MVのゲーム画面が本当に遊べる。</div>
+        <div class="meta">#123「現代の勇者 Re:」／約8分／クリア後に「つづきから」</div>
+      </div>
+    </a>
+
+    <a class="gcard" href="/game/mosaic/">
+      <div class="shot"><img src="/game/mosaic/assets/img/s001.jpg" alt="モザイク きおくのまちがいさがし" loading="lazy"><span class="play">PLAY ▶</span></div>
+      <div class="tag">
+        <div class="kind">SPOT THE DIFFERENCE</div>
+        <h2>モザイク — きおくの まちがいさがし</h2>
+        <div class="desc">同じ記憶を二回思い出すと、二回目はどこかが違う。一番近くにいるはずのあなたは、誰？</div>
+        <div class="meta">#116「モザイク」／約8分／音ありイヤホン推奨</div>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<div class="gnote">🎧 どのゲームも最後に曲が流れます。音を出せる環境でどうぞ。スマホ対応。</div>
+
+<footer>
+  © JP — AI MUSIC　/
+  <a href="/">JP RECORDS</a>
+  <a href="https://www.youtube.com/@JP-ow2gi" target="_blank" rel="noopener">YOUTUBE</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>パズル — 謎解きノベル | JP RECORDS</title>
+<meta name="description" content="JP「パズル」の世界を解く小さな謎解きノベル。欠けた穴だけが、くっきり残る。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#100c08; touch-action:manipulation; }
+  body { font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif; color:#e9dfc9;
+         display:flex; align-items:center; justify-content:center; }
+
+  #stage { position:relative; aspect-ratio:1280/716; width:min(100vw, calc(100vh * 1280 / 716));
+           background:#100c08; overflow:hidden; }
+  #scene { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; transition:opacity 1.2s ease; }
+  #scrim { position:absolute; inset:0; pointer-events:none;
+           background:linear-gradient(to top, rgba(12,9,6,.88) 0%, rgba(12,9,6,.42) 22%, transparent 45%); }
+
+  /* 独白 */
+  #mono { position:absolute; left:5%; right:5%; bottom:4%; min-height:30%; display:flex; flex-direction:column;
+          justify-content:flex-end; gap:.55em; pointer-events:none; }
+  .mline { font-size:clamp(15px, 2.6vh, 24px); letter-spacing:.12em; line-height:1.7;
+           color:#efe6d2; text-shadow:0 0 8px rgba(12,9,6,.95), 0 1px 14px rgba(12,9,6,.9);
+           opacity:0; transform:translateY(8px); transition:opacity .9s ease, transform .9s ease; }
+  .mline.on { opacity:1; transform:none; }
+  #adv { position:absolute; right:4%; bottom:3%; font-size:clamp(12px,1.8vh,15px); color:rgba(233,223,201,.7);
+         animation:blink 1.6s infinite; pointer-events:none; opacity:0; transition:opacity .5s; }
+  @keyframes blink { 50% { opacity:.25; } }
+
+  /* 謎UI */
+  #ui { position:absolute; left:0; right:0; bottom:0; padding:2% 4% 2.5%; display:none;
+        flex-direction:column; align-items:center; gap:1.4vh; }
+  #ui.on { display:flex; }
+  .qtext { font-size:clamp(15px,2.5vh,23px); letter-spacing:.14em;
+           text-shadow:0 0 10px rgba(12,9,6,.95), 0 1px 16px rgba(12,9,6,.9); }
+  .choices { display:flex; gap:2.2vh; flex-wrap:wrap; justify-content:center; }
+  .cbtn { font-family:inherit; font-size:clamp(15px,2.4vh,22px); letter-spacing:.2em; color:#e9dfc9;
+          background:rgba(24,18,12,.72); border:1px solid rgba(233,223,201,.4); border-radius:.4em;
+          padding:.55em 1.3em; cursor:pointer; transition:all .3s; }
+  .cbtn:hover { background:rgba(233,223,201,.16); }
+  .pieces { display:flex; gap:3vh; align-items:center; justify-content:center; }
+  .pimg { cursor:pointer; filter:drop-shadow(0 6px 10px rgba(0,0,0,.6)); transition:transform .3s; }
+  .pimg:hover { transform:translateY(-4px); }
+  #ans { font-family:inherit; font-size:clamp(16px,2.6vh,24px); letter-spacing:.3em; text-align:center;
+         color:#efe6d2; background:rgba(24,18,12,.8); border:1px solid rgba(233,223,201,.45);
+         border-radius:.4em; padding:.45em .8em; width:9em; outline:none; }
+  .hintb { position:absolute; left:4%; bottom:3%; font-family:inherit; font-size:clamp(12px,1.8vh,15px);
+           letter-spacing:.2em; color:rgba(233,223,201,.65); background:transparent;
+           border:1px solid rgba(233,223,201,.3); border-radius:1.5em; padding:.4em 1.1em; cursor:pointer; }
+  #hinttext { position:absolute; left:4%; bottom:9%; max-width:60%; font-size:clamp(13px,2vh,17px);
+              color:rgba(233,223,201,.9); letter-spacing:.12em; text-shadow:0 0 8px rgba(12,9,6,.95);
+              background:rgba(24,18,12,.7); border-radius:.4em; padding:.5em .9em; display:none; }
+
+  /* 穴・ホットスポット・スプライト */
+  .hot { position:absolute; width:9%; aspect-ratio:1; transform:translate(-50%,-50%);
+         border-radius:50%; cursor:pointer; }
+  .hot.pulse { box-shadow:0 0 0 0 rgba(233,223,201,.5); animation:pulse 2s infinite; }
+  @keyframes pulse { 70% { box-shadow:0 0 0 18px rgba(233,223,201,0); } 100% { box-shadow:0 0 0 0 rgba(233,223,201,0); } }
+  .sprite { position:absolute; pointer-events:none; filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));
+            transition:left 1s ease, top 1s ease, width 1s ease, transform 1s ease; }
+  @keyframes warp { 0%,100% { transform:none; } 25% { transform:skewX(1.2deg) scale(1.004); } 60% { transform:skewX(-.8deg); } }
+  .warping { animation:warp .7s ease; }
+  @keyframes nudge { 0%,100%{ transform:translateY(0);} 40%{ transform:translateY(-7px) rotate(2deg);} }
+  .nudging { animation:nudge .5s ease; }
+
+  /* 文字インベントリ */
+  #inv { position:absolute; top:2.5%; right:2.5%; display:flex; gap:.7vh; }
+  .tile { width:clamp(26px,4.4vh,40px); aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+          background:#efe6d2; color:#2a2018; border-radius:.25em; font-size:clamp(15px,2.6vh,24px);
+          box-shadow:0 3px 6px rgba(0,0,0,.5); }
+
+  /* フリップカード（文字獲得） */
+  #flip { position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+          background:rgba(10,8,5,.55); z-index:9; }
+  #flip .card { width:clamp(90px,18vh,150px); aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+                background:#efe6d2; color:#2a2018; border-radius:.3em; font-size:clamp(44px,9vh,76px);
+                box-shadow:0 10px 30px rgba(0,0,0,.7); animation:flipin 1.1s ease; }
+  @keyframes flipin { 0% { transform:rotateY(90deg) scale(.7); opacity:0; } 60% { transform:rotateY(0) scale(1.06); opacity:1; } 100% { transform:none; } }
+
+  /* 終章の文字ならべ */
+  #arrange { display:flex; gap:1.6vh; }
+  .atile { width:clamp(40px,7.5vh,66px); aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+           background:#efe6d2; color:#2a2018; border-radius:.3em; font-size:clamp(24px,4.6vh,42px);
+           cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.55); transition:all .25s; }
+  .atile.used { opacity:.18; pointer-events:none; transform:scale(.92); }
+  #built { min-height:1.6em; font-size:clamp(22px,4vh,36px); letter-spacing:.4em; text-indent:.4em; }
+
+  /* オーバーレイ共通 */
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:3vh; text-align:center; z-index:10; }
+  #title { background:rgba(8,6,4,.5); transition:opacity 1.6s; }
+  #title .bg { position:absolute; inset:0; z-index:-1; }
+  #title .bg img { width:100%; height:100%; object-fit:cover; filter:brightness(.42) blur(1.5px); }
+  #title h1 { font-size:clamp(46px,9.5vh,92px); font-weight:500; letter-spacing:.42em; text-indent:.42em;
+              color:#efe6d2; text-shadow:0 0 26px rgba(233,200,140,.35); }
+  #title .sub { font-size:clamp(13px,2.1vh,18px); letter-spacing:.45em; text-indent:.45em; color:rgba(233,223,201,.85); }
+  #start { margin-top:3.5vh; font-family:inherit; font-size:clamp(16px,2.5vh,23px); letter-spacing:.34em; text-indent:.34em;
+           color:#efe6d2; background:transparent; border:1px solid rgba(233,223,201,.55); border-radius:2em;
+           padding:.85em 2.2em; cursor:pointer; transition:all .4s; }
+  #start:disabled { opacity:.35; cursor:default; }
+  #start:not(:disabled):hover { background:rgba(233,223,201,.12); box-shadow:0 0 22px rgba(233,200,140,.25); }
+  #title .credit { position:absolute; bottom:3vh; font-size:12px; letter-spacing:.2em; color:rgba(233,223,201,.5); }
+
+  #ending { background:#0a0805; opacity:0; pointer-events:none; transition:opacity 3s ease; z-index:20; }
+  #ending .bg { position:absolute; inset:0; }
+  #ending .bg img { width:100%; height:100%; object-fit:cover; filter:brightness(.5); transition:filter 6s ease; }
+  #elyric { position:relative; font-size:clamp(20px,3.6vh,34px); letter-spacing:.18em; line-height:2;
+            color:#f2ead6; text-shadow:0 0 14px rgba(10,8,5,.95), 0 2px 22px rgba(10,8,5,.9);
+            opacity:0; transition:opacity 1.2s ease; white-space:pre-line; }
+  #endcard { position:relative; display:none; flex-direction:column; align-items:center; gap:4vh; }
+  #endcard .fin { font-size:clamp(22px,4vh,38px); letter-spacing:.5em; text-indent:.5em; }
+  #again { font-family:inherit; font-size:clamp(13px,2vh,16px); letter-spacing:.3em; text-indent:.3em;
+           color:rgba(233,223,201,.75); background:transparent; border:none; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img id="scene" src="assets/img/ch1.jpg" alt="">
+  <div id="scrim"></div>
+  <div id="fx"></div>
+  <div id="mono"></div>
+  <div id="adv">▼</div>
+  <div id="ui"></div>
+  <div id="inv"></div>
+  <button class="hintb" id="hintb" style="display:none">ヒント</button>
+  <div id="hinttext"></div>
+</div>
+
+<div id="flip"><div class="card" id="flipchar"></div></div>
+
+<div class="overlay" id="title">
+  <div class="bg"><img src="assets/img/title.jpg" alt=""></div>
+  <h1>パズル</h1>
+  <div class="sub">— 足りない一枚の 謎解きノベル —</div>
+  <button id="start" disabled>よみこみちゅう…</button>
+  <div class="credit">JP — AI MUSIC #114「パズル」</div>
+</div>
+
+<div class="overlay" id="ending">
+  <div class="bg"><img src="assets/img/fin.jpg" alt=""></div>
+  <div id="elyric"></div>
+  <div id="endcard">
+    <div class="fin">おしまい</div>
+    <button id="again">— もういちど ひろげる —</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- データ ----------
+  const IMG = n => `assets/img/${n}`;
+  const CHAPTERS = [
+    { id:'ch1', img:'ch1.jpg', letter:'ば',
+      mono:['また　夜になってしまった','箱をかたむけると　千のかたちが','テーブルの上で　ざらざらと目を覚ます','どれもよく似て　どれもちがう','まずは　一枚'],
+      riddle:{ type:'fit1', q:'この一枚は　どこのもの？', piece:'ch1_piece.png',
+               voids:[{x:.423,y:.5,ok:true},{x:.6539,y:.2144},{x:.1922,y:.7856}],
+               hints:['かたちを　よく見る','でっぱりと　くぼみの数','まんなかの穴'] } },
+    { id:'ch2', img:'ch2.jpg', letter:'の',
+      mono:['合うはずだと　おもった','おなじ箱から　出てきたのだから','けれど　押しこむたび','となりの一枚が　すこし浮く'],
+      riddle:{ type:'pick3', q:'穴に合うのは　どれ？',
+               pieces:[{img:'ch2_p_flipped.png'},{img:'ch2_p_correct.png',ok:true},{img:'ch2_p_other.png'}],
+               void:{x:.5,y:.5},
+               hints:['ちからじゃ　ない','穴のふちと　みくらべて','でっぱりの向きが逆のものがある'] } },
+    { id:'ch3', img:'ch3.jpg', letter:'す',
+      mono:['箱の絵は　とうに剥がれて','なんの景色かも　知らないまま','それでも　手はおぼえていて','すこしずつ　なにかが立ちあがる','枝のようで　腕のようで'],
+      riddle:{ type:'choice', q:'くみかけの絵は──なに？', options:['そら','き','うみ','かお'], ok:'き',
+               hints:['組みあがった ところを見る','根もとから　ひろがっている'] } },
+    { id:'ch4', img:'ch4.jpg', letter:'て',
+      mono:['はんぶんまで　きたと　おもっていた','ここに　ないものばかり　かぞえて','のこりの夜だけが　みじかくなる','そとでは　風が　とおりすぎるだけ','こんやも　底のほうへ　しずんでいく'],
+      riddle:{ type:'spot', q:'角の一枚が　見つからない──どこかにある', corner:{x:.0383,y:.0712}, piece:'ch4_corner.png',
+               spots:[{x:.10,y:.35,name:'ランプ'},{x:.62,y:.30,ok:true,name:'箱'},{x:.42,y:.78,name:'ピースの山'},{x:.86,y:.66,name:'手もと'}],
+               hints:['独白を　もういちど','行の　あたまを　ひろって','──はこのそこ'] } },
+    { id:'ch5', img:'ch5.jpg', letter:'を',
+      mono:['ふと　手が　とまる','欠けたところばかり　目で追っていた','すこし　はなれて　みる','白い穴が　ならんでいる'],
+      riddle:{ type:'input', q:'白い欠けは　ふたもじ──だれのこと？',
+               answers:['きみ','キミ','kimi','ｷﾐ'],
+               hints:['画面から　はなれて見る','カタカナ　ふたつ','左が「キ」なら──'] } },
+  ];
+  const CH5B_MONO = ['ああ','この　かたち'];
+  const FINAL_MONO = ['ピースの裏に　ひろってきた　五つの文字','手の中で　ならべてみる'];
+  const FINAL_ANSWER = 'てをのばす';
+  const LAND_MONO = ['さがしながら　抱きしめる','そんな夜が　あってもいい'];
+  const LYRICS = [ // ending.mp3 は原曲155.5sから。offset = SRT実測 - 155.5
+    {t:1.495,  e:4.90,  x:'最後の一枚　どこへいったんだろう'},
+    {t:4.925,  e:8.048, x:'卓上に広げた　ままの夜に'},
+    {t:8.073,  e:12.073,x:'うまくいかなくて　いいのかもな'},
+    {t:13.816, e:18.74, x:'完成しない絵を　抱きしめてみる'},
+    {t:20.745, e:24.88, x:'足りないのは　ほんとうにピース？'},
+    {t:27.237, e:32.183,x:'答えのないまま　また手を伸ばす'},
+  ];
+
+  // ---------- 要素 ----------
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), scene = $('scene'), fx = $('fx'), mono = $('mono'),
+        adv = $('adv'), ui = $('ui'), inv = $('inv'), hintb = $('hintb'), hinttext = $('hinttext'),
+        flip = $('flip'), flipchar = $('flipchar');
+
+  // ---------- 音 ----------
+  const bgm = new Audio('assets/audio/bgm_loop.mp3'); bgm.loop = true;
+  const seP = new Audio('assets/audio/se_paper.mp3');
+  const seC = new Audio('assets/audio/se_click.mp3');
+  const endTrack = new Audio('assets/audio/ending.mp3');
+
+  const PEEK = new URLSearchParams(location.search).get('peek');
+  // ---------- 進行状態 ----------
+  let chIdx = 0, letters = [], busy = false;
+  let monoQueue = [], monoShown = 0, onMonoDone = null;
+  let hintList = [], hintStep = 0;
+
+  // ---------- 独白表示 ----------
+  function showMono(lines, done) {
+    mono.innerHTML = ''; monoQueue = lines; monoShown = 0; onMonoDone = done;
+    adv.style.opacity = 1;
+    advance();
+  }
+  function advance() {
+    if (monoShown < monoQueue.length) {
+      const d = document.createElement('div');
+      d.className = 'mline'; d.textContent = monoQueue[monoShown];
+      mono.appendChild(d);
+      setTimeout(() => d.classList.add('on'), 50);
+      monoShown++;
+      if (monoShown === monoQueue.length) setTimeout(() => { adv.style.opacity = 0; onMonoDone && onMonoDone(); }, 700);
+      else if (PEEK !== null) setTimeout(advance, 400); // 検証用: peek時は自動送り
+    }
+  }
+  stage.addEventListener('click', () => { if (!busy && monoShown < monoQueue.length) advance(); });
+
+  // ---------- ヒント ----------
+  function setHints(list) {
+    hintList = list || []; hintStep = 0;
+    hintb.style.display = hintList.length ? '' : 'none';
+    hinttext.style.display = 'none';
+  }
+  hintb.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!hintList.length) return;
+    hinttext.textContent = hintList[Math.min(hintStep, hintList.length - 1)];
+    hinttext.style.display = 'block';
+    hintStep++;
+  });
+
+  // ---------- 汎用 ----------
+  const stageW = () => stage.getBoundingClientRect().width;
+  function px(v) { return (v * 100) + '%'; }
+  function playSE(a) { try { a.currentTime = 0; a.play(); } catch (_) {} }
+  function fadeScene(img, cb) {
+    scene.style.opacity = 0;
+    setTimeout(() => { scene.src = IMG(img); scene.onload = () => { scene.style.opacity = 1; cb && cb(); }; }, 1200);
+  }
+  function spriteEl(img, wRatio) {
+    const s = document.createElement('img');
+    s.src = IMG(img); s.className = 'sprite';
+    s.style.width = (wRatio * 100) + '%';
+    return s;
+  }
+  function grantLetter(ch, cb) {
+    playSE(seP);
+    setTimeout(() => {
+      flipchar.textContent = ch.letter;
+      flip.style.display = 'flex';
+      setTimeout(() => {
+        flip.style.display = 'none';
+        letters.push(ch.letter);
+        const t = document.createElement('div'); t.className = 'tile'; t.textContent = ch.letter;
+        inv.appendChild(t);
+        cb && cb();
+      }, 1700);
+    }, 650);
+  }
+
+  // ---------- 章の進行 ----------
+  function startChapter(i) {
+    chIdx = i;
+    const ch = CHAPTERS[i];
+    fx.innerHTML = ''; ui.innerHTML = ''; ui.classList.remove('on');
+    setHints(null); busy = false;
+    fadeScene(ch.img, () => showMono(ch.mono, () => startRiddle(ch)));
+  }
+
+  function startRiddle(ch) {
+    const r = ch.riddle;
+    setHints(r.hints);
+    ui.classList.add('on');
+    mono.style.opacity = .35;
+    if (r.type === 'fit1') riddleFit1(ch, r);
+    else if (r.type === 'pick3') riddlePick3(ch, r);
+    else if (r.type === 'choice') riddleChoice(ch, r);
+    else if (r.type === 'spot') riddleSpot(ch, r);
+    else if (r.type === 'input') riddleInput(ch, r);
+  }
+
+  function riddleDone(ch) {
+    busy = true;
+    ui.innerHTML = ''; ui.classList.remove('on'); setHints(null);
+    mono.style.opacity = 1;
+    grantLetter(ch, () => {
+      if (ch.id === 'ch5') { ch5bBeat(); return; }
+      if (chIdx + 1 < CHAPTERS.length) startChapter(chIdx + 1);
+      else finalChapter();
+    });
+  }
+
+  // 章1: ピース1枚→穴3つ
+  function riddleFit1(ch, r) {
+    const q = document.createElement('div'); q.className = 'qtext'; q.textContent = r.q;
+    ui.appendChild(q);
+    const wrap = document.createElement('div'); wrap.className = 'pieces';
+    const p = spriteEl(r.piece, .12); p.classList.add('pimg'); p.style.position = 'static'; p.style.pointerEvents = 'none'; p.style.width = (stageW() * 0.12) + 'px';
+    wrap.appendChild(p); ui.appendChild(wrap);
+    r.voids.forEach(v => {
+      const h = document.createElement('div'); h.className = 'hot';
+      h.style.left = px(v.x); h.style.top = px(v.y);
+      h.addEventListener('click', e => {
+        e.stopPropagation();
+        if (busy) return;
+        if (v.ok) {
+          busy = true;
+          const fly = spriteEl(r.piece, .12);
+          const rect = p.getBoundingClientRect(), srect = stage.getBoundingClientRect();
+          fly.style.left = ((rect.left - srect.left) / srect.width * 100) + '%';
+          fly.style.top = ((rect.top - srect.top) / srect.height * 100) + '%';
+          fx.appendChild(fly); p.style.visibility = 'hidden';
+          setTimeout(() => {
+            fly.style.width = (0.115 * 100) + '%';
+            fly.style.left = px(v.x - .0575); fly.style.top = px(v.y - .105);
+          }, 50);
+          setTimeout(() => riddleDone(ch), 1100);
+        } else { p.classList.remove('nudging'); void p.offsetWidth; p.classList.add('nudging'); }
+      });
+      fx.appendChild(h);
+    });
+  }
+
+  // 章2: 候補3枚→中央の穴
+  function riddlePick3(ch, r) {
+    const q = document.createElement('div'); q.className = 'qtext'; q.textContent = r.q;
+    ui.appendChild(q);
+    const wrap = document.createElement('div'); wrap.className = 'pieces';
+    r.pieces.forEach(pc => {
+      const p = spriteEl(pc.img, .1); p.classList.add('pimg'); p.style.position = 'static'; p.style.transition = 'transform .3s'; p.style.width = (stageW() * 0.105) + 'px'; p.style.pointerEvents = 'auto';
+      p.addEventListener('click', e => {
+        e.stopPropagation();
+        if (busy) return;
+        if (pc.ok) {
+          busy = true;
+          const fly = spriteEl(pc.img, .1);
+          const rect = p.getBoundingClientRect(), srect = stage.getBoundingClientRect();
+          fly.style.left = ((rect.left - srect.left) / srect.width * 100) + '%';
+          fly.style.top = ((rect.top - srect.top) / srect.height * 100) + '%';
+          fx.appendChild(fly); p.style.visibility = 'hidden';
+          setTimeout(() => {
+            fly.style.width = (0.115 * 100) + '%';
+            fly.style.left = px(r.void.x - .0575); fly.style.top = px(r.void.y - .105);
+          }, 50);
+          setTimeout(() => riddleDone(ch), 1100);
+        } else {
+          stage.classList.remove('warping'); void stage.offsetWidth; stage.classList.add('warping');
+        }
+      });
+      wrap.appendChild(p);
+    });
+    ui.appendChild(wrap);
+  }
+
+  // 章3: 4択
+  function riddleChoice(ch, r) {
+    const q = document.createElement('div'); q.className = 'qtext'; q.textContent = r.q;
+    ui.appendChild(q);
+    const wrap = document.createElement('div'); wrap.className = 'choices';
+    r.options.forEach(op => {
+      const b = document.createElement('button'); b.className = 'cbtn'; b.textContent = op;
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        if (busy) return;
+        if (op === r.ok) riddleDone(ch);
+        else { b.classList.remove('nudging'); void b.offsetWidth; b.classList.add('nudging'); }
+      });
+      wrap.appendChild(b);
+    });
+    ui.appendChild(wrap);
+  }
+
+  // 章4: ホットスポット探索→角ピースが飛ぶ
+  function riddleSpot(ch, r) {
+    const q = document.createElement('div'); q.className = 'qtext'; q.textContent = r.q;
+    ui.appendChild(q);
+    let misses = 0;
+    r.spots.forEach(sp => {
+      const h = document.createElement('div'); h.className = 'hot';
+      h.style.left = px(sp.x); h.style.top = px(sp.y);
+      h.addEventListener('click', e => {
+        e.stopPropagation();
+        if (busy) return;
+        if (sp.ok) {
+          busy = true;
+          const fly = spriteEl(r.piece, .115);
+          fly.style.left = px(sp.x - .0575); fly.style.top = px(sp.y - .1);
+          fly.style.transform = 'rotate(160deg)';
+          fx.appendChild(fly);
+          playSE(seP);
+          setTimeout(() => {
+            fly.style.transform = 'none';
+            fly.style.left = px(r.corner.x - .045); fly.style.top = px(r.corner.y - .09);
+          }, 700);
+          setTimeout(() => riddleDone(ch), 1900);
+        } else {
+          misses++;
+          q.textContent = 'ちがう　ここじゃない';
+          setTimeout(() => q.textContent = r.q, 1200);
+          if (misses >= 2) r.spots.forEach(s2 => {}); // ヒントボタンに誘導（自動表示はしない）
+        }
+      });
+      fx.appendChild(h);
+    });
+  }
+
+  // 章5: かな入力
+  function riddleInput(ch, r) {
+    const q = document.createElement('div'); q.className = 'qtext'; q.textContent = r.q;
+    ui.appendChild(q);
+    const inp = document.createElement('input'); inp.id = 'ans'; inp.type = 'text';
+    inp.autocomplete = 'off'; inp.placeholder = '　';
+    const b = document.createElement('button'); b.className = 'cbtn'; b.textContent = 'こたえる';
+    const norm = s => (s || '').trim().toLowerCase()
+      .replace(/[ァ-ヴ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+    const check = () => {
+      if (busy) return;
+      const v = norm(inp.value);
+      if (r.answers.map(norm).includes(v)) riddleDone(ch);
+      else { inp.classList.remove('nudging'); void inp.offsetWidth; inp.classList.add('nudging'); }
+    };
+    b.addEventListener('click', e => { e.stopPropagation(); check(); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(); e.stopPropagation(); });
+    inp.addEventListener('click', e => e.stopPropagation());
+    const wrap = document.createElement('div'); wrap.className = 'choices';
+    wrap.appendChild(inp); wrap.appendChild(b);
+    ui.appendChild(wrap);
+    setTimeout(() => inp.focus(), 300);
+  }
+
+  // 章5後半: 人型の穴
+  function ch5bBeat() {
+    fx.innerHTML = '';
+    busy = false;
+    fadeScene('ch5b.jpg', () => showMono(CH5B_MONO, () => setTimeout(finalChapter, 1400)));
+  }
+
+  // ---------- 終章 ----------
+  function finalChapter() {
+    // 静寂へ
+    const fade = setInterval(() => { bgm.volume = Math.max(0, bgm.volume - .05); if (bgm.volume <= 0) { bgm.pause(); clearInterval(fade); } }, 120);
+    fx.innerHTML = ''; inv.innerHTML = '';
+    busy = false;
+    showMono(FINAL_MONO, () => {
+      ui.innerHTML = ''; ui.classList.add('on');
+      setHints(['ならべる　じゅんばん','はじまりの　ボタン','タイトルの　ことば']);
+      const built = document.createElement('div'); built.id = 'built'; built.textContent = '';
+      const wrap = document.createElement('div'); wrap.id = 'arrange';
+      // 集めた順（ば の す て を）で提示
+      letters.forEach(L => {
+        const t = document.createElement('div'); t.className = 'atile'; t.textContent = L;
+        t.addEventListener('click', e => {
+          e.stopPropagation();
+          if (busy || t.classList.contains('used')) return;
+          t.classList.add('used');
+          built.textContent += L;
+          if (built.textContent.length === letters.length) {
+            if (built.textContent === FINAL_ANSWER) finalSolved(built, wrap);
+            else setTimeout(() => { built.textContent = ''; wrap.querySelectorAll('.atile').forEach(x => x.classList.remove('used')); }, 900);
+          }
+        });
+        wrap.appendChild(t);
+      });
+      ui.appendChild(built); ui.appendChild(wrap);
+    });
+  }
+
+  function finalSolved(built, wrap) {
+    busy = true;
+    setHints(null);
+    wrap.style.opacity = .25;
+    built.style.textShadow = '0 0 18px rgba(233,200,140,.8)';
+    setTimeout(() => {
+      ui.innerHTML = ''; busy = false;
+      showMono(['はじまりから　ずっと　そこにあった'], () => {
+        ui.classList.add('on');
+        const q = document.createElement('div'); q.className = 'qtext';
+        q.textContent = '足りないのは　ほんとうにピース？';
+        const wrap2 = document.createElement('div'); wrap2.className = 'choices';
+        ['それでも探す', 'このまま抱きしめる'].forEach(txt => {
+          const b = document.createElement('button'); b.className = 'cbtn'; b.textContent = txt;
+          b.addEventListener('click', e => { e.stopPropagation(); landing(); });
+          wrap2.appendChild(b);
+        });
+        ui.appendChild(q); ui.appendChild(wrap2);
+      });
+    }, 1600);
+  }
+
+  function landing() {
+    busy = true;
+    ui.innerHTML = ''; ui.classList.remove('on');
+    showMono(LAND_MONO, () => {
+      setTimeout(() => {
+        playSE(seC); // ゲームでただ一度の「カチッ」
+        setTimeout(startEnding, 900);
+      }, 1200);
+    });
+    busy = false; // 独白クリック送りは有効に
+  }
+
+  // ---------- エンディング ----------
+  function startEnding() {
+    busy = true;
+    const ov = $('ending'), ly = $('elyric');
+    ov.style.pointerEvents = 'auto'; ov.style.opacity = 1;
+    endTrack.volume = 1; endTrack.play().catch(() => {});
+    let li = -1;
+    const tick = () => {
+      const t = endTrack.currentTime;
+      const cur = LYRICS.findIndex(L => t >= L.t && t <= L.e);
+      if (cur !== li) {
+        if (cur === -1) { ly.style.opacity = 0; }
+        else { ly.textContent = LYRICS[cur].x; ly.style.opacity = 1; }
+        li = cur;
+      }
+      if (!endTrack.ended) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    endTrack.addEventListener('ended', () => {
+      ly.style.opacity = 0;
+      ov.querySelector('.bg img').style.filter = 'brightness(.12)';
+      setTimeout(() => { $('endcard').style.display = 'flex'; }, 2500);
+    });
+    $('again').addEventListener('click', () => location.reload());
+  }
+
+  // ---------- 起動 ----------
+  const peek = PEEK; // 検証用: ?peek=ch3 / final / ending
+  const toLoad = ['title.jpg','ch1.jpg','ch2.jpg','ch3.jpg','ch4.jpg','ch5.jpg','ch5b.jpg','fin.jpg',
+                  'ch1_piece.png','ch2_p_correct.png','ch2_p_flipped.png','ch2_p_other.png','ch4_corner.png'];
+  let loaded = 0;
+  const startBtn = $('start');
+  toLoad.forEach(n => {
+    const im = new Image();
+    im.onload = im.onerror = () => {
+      loaded++;
+      startBtn.textContent = loaded >= toLoad.length ? '— 手を伸ばす —' : `よみこみちゅう… ${Math.round(loaded / toLoad.length * 100)}%`;
+      if (loaded >= toLoad.length) { startBtn.disabled = false; if (peek !== null) startBtn.click(); }
+    };
+    im.src = IMG(n);
+  });
+
+  startBtn.addEventListener('click', () => {
+    $('title').style.opacity = 0;
+    setTimeout(() => $('title').style.display = 'none', 1500);
+    bgm.volume = 1; bgm.play().catch(() => {});
+    if (peek === 'final' || peek === 'ending') {
+      letters = ['ば','の','す','て','を'];
+      letters.forEach(L => { const t = document.createElement('div'); t.className = 'tile'; t.textContent = L; inv.appendChild(t); });
+      if (peek === 'ending') { landing(); } else { finalChapter(); }
+      return;
+    }
+    const idx = peek && peek.startsWith('ch') ? Math.min(4, Math.max(0, parseInt(peek.slice(2)) - 1)) : 0;
+    for (let k = 0; k < idx; k++) {
+      letters.push(CHAPTERS[k].letter);
+      const t = document.createElement('div'); t.className = 'tile'; t.textContent = CHAPTERS[k].letter; inv.appendChild(t);
+    }
+    startChapter(idx);
+  });
+})();
+</script>
+</body>
+</html>

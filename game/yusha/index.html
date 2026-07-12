@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>現代の勇者 Re: — 遊べる嘘RPG | JP RECORDS</title>
+<meta name="description" content="JP「現代の勇者 Re:」のMV画面を本当に遊べるようにした小さなRPG。ダンジョンはない。それでも勇者でいたい。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#04060c; touch-action:manipulation; }
+  body { font-family:"MS Gothic","MS ゴシック","Hiragino Kaku Gothic ProN",monospace; color:#fff;
+         display:flex; align-items:center; justify-content:center; }
+
+  #stage { position:relative; aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9));
+           background:#04060c; overflow:hidden; }
+  #scene { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; transition:opacity .8s ease; }
+  .hot { position:absolute; cursor:pointer; }
+
+  /* DQ風ウィンドウ */
+  .dq { background:rgba(2,4,12,.92); border:3px solid #fff; border-radius:6px;
+        box-shadow:0 0 0 3px rgba(2,4,12,.92), 0 6px 18px rgba(0,0,0,.6); color:#fff; }
+  #msg { position:absolute; left:6%; right:6%; bottom:4%; min-height:22%; padding:1.6% 2.2%; display:none;
+         font-size:clamp(14px,2.7vh,24px); line-height:1.9; letter-spacing:.06em; white-space:pre-wrap; }
+  #msg.on { display:block; }
+  #madv { position:absolute; right:1.4em; bottom:.5em; animation:blink 1.1s infinite; }
+  @keyframes blink { 50% { opacity:.15; } }
+
+  #cmd { position:absolute; right:7%; bottom:29%; padding:1.2% 1.6%; display:none; min-width:22%;
+         font-size:clamp(14px,2.6vh,23px); line-height:2.05; letter-spacing:.06em; }
+  #cmd.on { display:block; }
+  .copt { cursor:pointer; padding:0 .4em; border-radius:4px; }
+  .copt:hover { background:rgba(255,255,255,.14); }
+  .copt::before { content:"　"; }
+  .copt.sel::before { content:"▶"; }
+
+  #hp { position:absolute; right:2.5%; top:3.5%; padding:.7% 1.4%; font-size:clamp(12px,2.2vh,19px);
+        letter-spacing:.06em; display:none; }
+  #hp.on { display:block; }
+  #hp b { color:#7CFC90; font-weight:normal; }
+
+  /* エンディング歌詞 */
+  #elyric { position:absolute; left:0; right:0; bottom:8%; text-align:center; pointer-events:none;
+            font-size:clamp(20px,4vh,36px); letter-spacing:.14em; color:#fff;
+            text-shadow:0 0 10px rgba(2,6,16,.95), 0 2px 18px rgba(2,6,16,.95), 0 0 3px #000;
+            opacity:0; transition:opacity .8s ease; }
+
+  #fade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity 1.4s ease; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img id="scene" src="assets/img/s001.jpg" alt="">
+  <div id="fx"></div>
+  <div id="hp" class="dq">ゆうしゃ　こころのHP <b id="hpv">100</b></div>
+  <div id="cmd" class="dq"></div>
+  <div id="msg" class="dq"><span id="mtext"></span><span id="madv" style="display:none">▼</span></div>
+  <div id="elyric"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const scene = $('scene'), fx = $('fx'), msg = $('msg'), mtext = $('mtext'), madv = $('madv'),
+        cmd = $('cmd'), hpwin = $('hp'), hpv = $('hpv'), elyric = $('elyric'), fade = $('fade');
+  const IMG = n => `assets/img/${n}.jpg`;
+  const CLEAR_KEY = 'yusha_re_cleared';
+
+  const bgm = new Audio('assets/audio/bgm_loop.mp3'); bgm.loop = true;
+  const endTrack = new Audio('assets/audio/ending.mp3');
+  const seOk = new Audio('assets/audio/se_ok.mp3');
+  const seGood = new Audio('assets/audio/se_good.mp3');
+  const seBad = new Audio('assets/audio/se_bad.mp3');
+  const playSE = a => { try { a.currentTime = 0; a.play(); } catch (_) {} };
+
+  let hp = 100;
+  const dmg = n => { hp = Math.max(10, hp - n); hpv.textContent = hp; };
+
+  // ---------- メッセージ（タイプ送り・クリックで進む） ----------
+  let typing = false, skipType = false, waiting = null;
+  function showLines(lines, done) {
+    msg.classList.add('on');
+    let i = 0;
+    const next = () => {
+      if (i >= lines.length) { msg.classList.remove('on'); done && done(); return; }
+      typeLine(lines[i++], () => { waiting = next; madv.style.display = ''; });
+    };
+    next();
+  }
+  function typeLine(text, done) {
+    typing = true; skipType = false; madv.style.display = 'none';
+    mtext.textContent = '';
+    let k = 0;
+    const tick = () => {
+      if (skipType) { mtext.textContent = text; typing = false; done(); return; }
+      mtext.textContent = text.slice(0, ++k);
+      if (k < text.length) setTimeout(tick, 26);
+      else { typing = false; done(); }
+    };
+    tick();
+  }
+  $('stage').addEventListener('click', () => {
+    if (typing) { skipType = true; return; }
+    if (waiting) { const w = waiting; waiting = null; playSE(seOk); w(); }
+  });
+
+  // ---------- コマンド ----------
+  function showCmd(options, onPick) {
+    cmd.innerHTML = ''; cmd.classList.add('on');
+    options.forEach((op, i) => {
+      const d = document.createElement('div');
+      d.className = 'copt' + (i === 0 ? ' sel' : '');
+      d.textContent = op;
+      d.addEventListener('mouseenter', () => { cmd.querySelectorAll('.copt').forEach(x => x.classList.remove('sel')); d.classList.add('sel'); });
+      d.addEventListener('click', e => { e.stopPropagation(); cmd.classList.remove('on'); playSE(seOk); onPick(op); });
+      cmd.appendChild(d);
+    });
+  }
+
+  function setScene(img, cb) {
+    scene.style.opacity = 0;
+    setTimeout(() => { scene.src = IMG(img); scene.onload = () => { scene.style.opacity = 1; cb && cb(); }; }, 820);
+  }
+
+  // ---------- 本編 ----------
+  function intro() {
+    hpwin.classList.add('on');
+    setScene('s004', () => showLines([
+      '＊ゆうしゃは めを さました',
+      '＊しょじひん：ギター（すこし おれてる）\n　　　　　　　ゆめ（かなり おれてる）',
+      '＊きょうも まちへ でる',
+    ], battle1));
+  }
+
+  function battle1() {
+    setScene('s010', () => showLines(['＊まものの けはいを さがした'], () => {
+      showCmd(['しらべる', 'まつ', 'さけぶ'], op => {
+        const t = { 'しらべる': '＊くさが はえていた。いじょうだ',
+                    'まつ': '＊30ぷん まった。だれも こなかった',
+                    'さけぶ': '＊「でてこい！」　こだまも かえってこない。ここは とかいだ' }[op];
+        showLines([t, '＊ダンジョンは どこにも なかった'], battle2);
+      });
+    }));
+  }
+
+  function battle2() {
+    setScene('s043', () => showLines(['＊つうきんラッシュが あらわれた！'], () => askB2()));
+    function askB2() {
+      showCmd(['たたかう', 'ぼうぎょ', 'にげる'], op => {
+        if (op === 'たたかう') { playSE(seBad); dmg(20); showLines(['＊スーツの むれは つよすぎる！\n　こころのHPが 20 へった'], askB2); }
+        else if (op === 'にげる') { playSE(seBad); dmg(10); showLines(['＊まわりこまれた！　まんいんでんしゃに にげばは ない'], askB2); }
+        else { playSE(seGood); showLines(['＊めを とじて　あたまの なかで おんがくを ならした',
+                                          '＊ダメージは うけた。でも こころは まもった'], school); }
+      });
+    }
+  }
+
+  function school() {
+    setScene('s016', () => showLines(['＊がっこうに いた ころを おもいだした'], () =>
+      setScene('s017', () => showLines([
+        '＊べんきょうを した。ちからが 10 あがった……がめんには そう でている',
+        '＊つかいみちは まだ みつからない',
+      ], room))));
+  }
+
+  function room() {
+    setScene('s035', () => showLines(['＊へやに かえってきた', '＊すみっこに おれた ギターが ある'], askRoom));
+    function askRoom() {
+      showCmd(['インターネットを する', 'アニメを みる', 'ギターを なおす'], op => {
+        if (op === 'インターネットを する') {
+          setScene('s032', () => showLines(['＊さいきょうの ぶきを そうびした'], () =>
+            setScene('s033', () => showLines(['＊ネットの なかでは だれにも まけなかった'], () =>
+              setScene('s034', () => { playSE(seBad); dmg(10);
+                showLines(['＊がめんを けすと へやは くらかった'], () => setScene('s035', askRoom)); })))));
+        } else if (op === 'アニメを みる') {
+          playSE(seBad); dmg(10);
+          showLines(['＊アニメを 3わ みた。おもしろかった。それだけだった'], askRoom);
+        } else {
+          playSE(seGood);
+          showLines(['＊おれた ネックに テープを まいた。ぶきの しゅうりは ゆうしゃの きほんだ', '＊よし。まだ 鳴る'], status);
+        }
+      });
+    }
+  }
+
+  function status() {
+    setScene('s040', () => showLines([
+      '＊ステータスを ひらいた',
+      '＊レベルが よめない。この まちには けいけんちの けいじばんが ない',
+    ], night));
+  }
+
+  function night() {
+    setScene('s039', () => showLines(['＊よる。ギターを かついで まちに でた'], () =>
+      setScene('s045', () => showLines(['＊ここで なにを する？'], askNight))));
+    function askNight() {
+      showCmd(['たたかう', 'どうぐ', 'にげる', 'うたう'], op => {
+        if (op === 'たたかう') { playSE(seBad); dmg(5); showLines(['＊てきは いない。きのうも きょうも あしたも、ただの まいにちだ'], askNight); }
+        else if (op === 'どうぐ') { showLines(['＊かばんには ギターしか はいっていない'], askNight); }
+        else if (op === 'にげる') { showLines(['＊にげるのは もう じゅうぶん やった'], askNight); }
+        else { playSE(seGood); live(); }
+      });
+    }
+  }
+
+  function live() {
+    setScene('s022', () => showLines(['＊ゆうしゃたちは うたった'], () =>
+      setScene('s049', () => showLines(['＊とおりすがりの ひとの あたまに HPバーが ともりはじめた'], friends))));
+  }
+
+  function friends() {
+    setScene('s059', () => showLines(['＊ともだちが できた！'], ending));
+  }
+
+  // ---------- エンディング（ラスサビ・SRT実測-170.0s） ----------
+  const LYRICS = [
+    { t: 1.26,  e: 5.87,  x: '勇者の声が聞こえたか',       img: 's058' },
+    { t: 5.894, e: 10.27, x: '仲間ができてうれしいよ',     img: 's060' },
+    { t: 10.291,e: 14.96, x: '現代の勇者ここにあり',       img: 's061' },
+    { t: 14.986,e: 23.91, x: 'それでは今日の冒険はここまで', img: 's062' },
+  ];
+  function ending() {
+    hpwin.classList.remove('on');
+    const f = setInterval(() => { bgm.volume = Math.max(0, bgm.volume - .06); if (bgm.volume <= 0) { bgm.pause(); clearInterval(f); } }, 100);
+    setScene('s058', () => {
+      endTrack.volume = 1; endTrack.play().catch(() => {});
+      let li = -1;
+      const tick = () => {
+        const t = endTrack.currentTime;
+        const cur = LYRICS.findIndex(L => t >= L.t && t <= L.e);
+        if (cur !== li) {
+          if (cur === -1) elyric.style.opacity = 0;
+          else {
+            elyric.textContent = LYRICS[cur].x; elyric.style.opacity = 1;
+            if (scene.src.indexOf(LYRICS[cur].img) === -1) { scene.src = IMG(LYRICS[cur].img); }
+          }
+          li = cur;
+        }
+        if (!endTrack.ended) requestAnimationFrame(tick);
+        else finish();
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function finish() {
+    elyric.style.opacity = 0;
+    try { localStorage.setItem(CLEAR_KEY, '1'); } catch (_) {}
+    setScene('s064', () => showLines(['＊ぼうけんを セーブしました'], () => {
+      setScene('s066', () => setTimeout(() => {
+        fade.style.opacity = 1;
+        setTimeout(() => location.reload(), 1800);
+      }, 2600));
+    }));
+  }
+
+  // ---------- エピローグ（クリア後・つづきから） ----------
+  function epilogue() {
+    hpwin.classList.remove('on');
+    setScene('s068', () => showLines([
+      '＊10ねんまえ、この ギターの うたが あった',
+      '＊バンドは かいさんして、ギターは おれた',
+      '＊ことし、あたらしい ぶきで その うたを よみがえらせた',
+      '＊さいきょうの ぶきは、インターネットから AIに かわっていた',
+      '＊げんだいの ゆうしゃ、ここに あり',
+    ], () => setScene('s069', () => setTimeout(() => { fade.style.opacity = 1; setTimeout(() => location.reload(), 1800); }, 3000))));
+  }
+
+  // ---------- タイトル（焼き込みメニューに直接ホットスポット） ----------
+  const cleared = (() => { try { return localStorage.getItem(CLEAR_KEY) === '1'; } catch (_) { return false; } })();
+  function title() {
+    scene.src = IMG('s001');
+    const items = [
+      { y: .425, act: () => { fx.innerHTML = ''; bgm.play().catch(() => {}); intro(); } },
+      { y: .484, act: () => {
+          if (cleared) { fx.innerHTML = ''; bgm.play().catch(() => {}); epilogue(); }
+          else showLines(['＊セーブデータが ありません'], () => {}); } },
+      { y: .544, act: () => showLines(['＊この じんせいに オプションは ない。ぜんぶ デフォルトだ'], () => {}) },
+      { y: .601, act: () => {
+          if (cleared) showLines(['＊つくったひと：JP', '＊おんがく：JP ＋ Suno', '＊え：gpt_image_2', '＊プログラム：Claude', '＊10ねんまえの ぼくへ——きいてるか', ], () => {});
+          else showLines(['＊？？？'], () => {}); } },
+    ];
+    items.forEach(it => {
+      const h = document.createElement('div');
+      h.className = 'hot';
+      h.style.cssText = `left:4%; width:15%; top:${(it.y - .028) * 100}%; height:5.4%;`;
+      h.addEventListener('click', e => { e.stopPropagation(); playSE(seOk); it.act(); });
+      fx.appendChild(h);
+    });
+  }
+
+  // 検証用: ?peek=battle2|room|night|ending|epilogue
+  const peek = new URLSearchParams(location.search).get('peek');
+  const toLoad = ['s001','s004','s010','s016','s017','s022','s032','s033','s034','s035','s039','s040','s043','s045','s049','s058','s059','s060','s061','s062','s064','s066','s068','s069'];
+  let loaded = 0;
+  toLoad.forEach(n => { const im = new Image(); im.onload = im.onerror = () => {
+    if (++loaded >= toLoad.length) {
+      if (peek === 'battle2') battle2();
+      else if (peek === 'room') room();
+      else if (peek === 'night') night();
+      else if (peek === 'ending') friends();
+      else if (peek === 'epilogue') epilogue();
+      else title();
+    }
+  }; im.src = IMG(n); });
+})();
+</script>
+</body>
+</html>
