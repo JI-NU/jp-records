@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>ダダ・ダンス — ながれてくるダを たたく | JP RECORDS</title>
+<meta name="description" content="JP「ダダ・ダンス」の世界。ながれてくる「ダ」が まるに かさなったら たたく。クイズには答えるな。答えた瞬間、ノリが死ぬ。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#111; touch-action:manipulation; }
+  body { font-family:"Arial Black","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif; color:#fffdf5;
+         display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; }
+
+  #stage { position:relative; aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9));
+           background:#111; overflow:hidden; cursor:pointer; }
+  #bg, #dancer { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; }
+  #bg { opacity:0; transition:opacity .15s; }
+  #dancer { transition:filter .4s; }
+  #stage.gray #dancer, #stage.gray #bg { filter:grayscale(.92) contrast(.85) brightness(.75); }
+  #stage.hot #dancer { filter:saturate(1.35) contrast(1.06); }
+  #flash { position:absolute; inset:0; background:#fffdf5; opacity:0; pointer-events:none; }
+  #lane { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
+
+  #groove { position:absolute; left:3%; top:5.5%; width:26%; height:4.2vh; border:4px solid #fffdf5;
+            box-shadow:0 3px 0 #111; background:rgba(17,17,17,.55); transform:skewX(-12deg); }
+  #gfill { height:100%; width:0%; background:linear-gradient(90deg,#00b3d9,#e6007e 60%,#ffd400); transition:width .25s; }
+  #combo { position:absolute; right:3.5%; top:4.5%; font-size:5.4vh; font-style:italic; letter-spacing:.05em;
+           text-shadow:3px 3px 0 #e6007e, 6px 6px 0 #111; opacity:0; transform:rotate(-4deg); }
+  #hintlane { position:absolute; left:0; right:0; top:38%; text-align:center; font-size:clamp(15px,3vh,28px);
+              font-style:italic; letter-spacing:.14em; color:#ffd400;
+              text-shadow:3px 3px 0 #111, -2px -2px 0 #111; pointer-events:none; opacity:0; transition:opacity .8s; z-index:3; }
+
+  #lyric { position:absolute; left:0; right:0; bottom:6%; text-align:center; font-size:clamp(16px,3.8vh,36px);
+           font-style:italic; letter-spacing:.06em; pointer-events:none; padding:0 6%;
+           text-shadow:3px 3px 0 #111, -2px -2px 0 #111, 0 0 24px rgba(0,0,0,.5); }
+
+  .da { position:absolute; font-size:6vh; font-style:italic; pointer-events:none; text-shadow:3px 3px 0 #111;
+        animation:daout .55s ease-out forwards; z-index:3; }
+  @keyframes daout { 0% { transform:scale(.4) rotate(var(--rot)); opacity:1; }
+                     100% { transform:scale(1.6) rotate(var(--rot)); opacity:0; } }
+
+  #quiz { position:absolute; left:50%; top:-45%; transform:translateX(-50%) rotate(-2deg); width:min(60%,540px);
+          background:#fffdf5; color:#111; border:6px solid #111; box-shadow:10px 10px 0 rgba(230,0,126,.85);
+          padding:2vh 2.4vh; transition:top .45s cubic-bezier(.3,1.4,.5,1); z-index:5; }
+  #quiz.on { top:11%; }
+  #quiz .q { font-size:clamp(15px,2.8vh,24px); margin-bottom:1.3vh; letter-spacing:.04em; }
+  #quiz .ans { display:flex; gap:1.2vh; flex-wrap:wrap; }
+  #quiz button { font-family:inherit; font-size:clamp(13px,2.3vh,19px); padding:.45em 1em; cursor:pointer;
+                 background:#ffd400; border:4px solid #111; box-shadow:4px 4px 0 #111; transition:transform .1s; }
+  #quiz button:hover { transform:translate(2px,2px); box-shadow:2px 2px 0 #111; }
+  #quiz.crumble { transition:top .5s ease-in, transform .5s ease-in, opacity .5s; top:115%; transform:translateX(-50%) rotate(18deg); opacity:0; }
+  #think { position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); font-size:12vh; opacity:0;
+           text-shadow:4px 4px 0 #111; pointer-events:none; z-index:6; }
+
+  #count { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+           font-size:26vh; font-style:italic; text-shadow:6px 6px 0 #e6007e, 12px 12px 0 #111; z-index:4; pointer-events:none; }
+
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:3vh; text-align:center; z-index:10; }
+  #title { background:rgba(17,17,17,.35); transition:opacity 1.2s; }
+  #title .bg { position:absolute; inset:0; z-index:-1; }
+  #title .bg img { width:100%; height:100%; object-fit:cover; }
+  #title h1 { font-size:clamp(42px,10vh,96px); font-style:italic; letter-spacing:.04em;
+              text-shadow:4px 4px 0 #e6007e, 8px 8px 0 #111, -3px -3px 0 #00b3d9; }
+  #title .sub { font-size:clamp(13px,2.3vh,19px); letter-spacing:.2em; background:#111; padding:.5em 1.4em; box-shadow:4px 4px 0 #e6007e; }
+  #title .hint { font-size:clamp(12px,2vh,16px); letter-spacing:.14em; color:#ffd400; text-shadow:2px 2px 0 #111; }
+  #start { margin-top:2.5vh; font-family:inherit; font-size:clamp(18px,3vh,27px); font-style:italic; letter-spacing:.1em;
+           color:#111; background:#ffd400; border:5px solid #111; box-shadow:7px 7px 0 #111;
+           padding:.7em 2em; cursor:pointer; transition:transform .1s; }
+  #start:disabled { opacity:.4; cursor:default; }
+  #start:not(:disabled):hover { transform:translate(3px,3px); box-shadow:4px 4px 0 #111; }
+  #title .credit { position:absolute; bottom:3vh; font-size:12px; letter-spacing:.2em; color:rgba(255,253,245,.6);
+                   text-shadow:1px 1px 0 #111; }
+
+  #result { background:#fffdf5; opacity:0; pointer-events:none; transition:opacity 1.8s; z-index:20; color:#111; }
+  #result .bg { position:absolute; inset:0; }
+  #result .bg img { width:100%; height:100%; object-fit:cover; opacity:.9; }
+  #result .card { position:relative; background:#fffdf5; border:6px solid #111; box-shadow:12px 12px 0 #e6007e;
+                  padding:4vh 6vh; display:flex; flex-direction:column; gap:2vh; transform:rotate(-1.5deg); }
+  #result .fin { font-size:clamp(26px,5.5vh,52px); font-style:italic; }
+  #result .stat { font-size:clamp(15px,2.7vh,24px); letter-spacing:.06em; }
+  #again { font-family:inherit; font-size:clamp(14px,2.4vh,20px); font-style:italic; margin-top:1vh;
+           color:#111; background:#ffd400; border:4px solid #111; box-shadow:5px 5px 0 #111; padding:.5em 1.4em; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img id="dancer" src="assets/img/p1.jpg" alt="">
+  <img id="bg" src="assets/img/b1.jpg" alt="">
+  <div id="flash"></div>
+  <canvas id="lane" width="1280" height="720"></canvas>
+  <div id="hintlane">「ダ」が まるに かさなったら たたく（がめんの どこでも OK）</div>
+  <div id="lyric"></div>
+  <div id="groove"><div id="gfill"></div></div>
+  <div id="combo"></div>
+  <div id="quiz"><div class="q"></div><div class="ans"></div></div>
+  <div id="think">…</div>
+  <div id="count"></div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="bg"><img src="assets/img/title.jpg" alt=""></div>
+  <h1>ダダ・ダンス</h1>
+  <div class="sub">ながれてくる「ダ」が まるに かさなったら たたく</div>
+  <div class="hint">※ とちゅうで なにか きかれても こたえないこと</div>
+  <button id="start" disabled>LOADING…</button>
+  <div class="credit">JP — AI MUSIC #122「ダダ・ダンス」</div>
+</div>
+
+<div class="overlay" id="result">
+  <div class="bg"><img src="assets/img/fin.jpg" alt=""></div>
+  <div class="card">
+    <div class="fin">あさまで おどった</div>
+    <div class="stat" id="stat1"></div>
+    <div class="stat" id="stat2"></div>
+    <div class="stat" id="stat3"></div>
+    <button id="again">— もういちど おどる —</button>
+  </div>
+</div>
+
+<script src="assets/lyrics.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), dancer = $('dancer'), bg = $('bg'), flash = $('flash'),
+        lane = $('lane'), lctx = lane.getContext('2d'),
+        lyric = $('lyric'), gfill = $('gfill'), combo = $('combo'),
+        quiz = $('quiz'), think = $('think'), count = $('count'), hintlane = $('hintlane');
+  const IMG = n => `assets/img/${n}.jpg`;
+  const PEEK = new URLSearchParams(location.search).get('peek');
+  const W = 1280, H = 720;
+
+  // ---------- ビートグリッド（実測: BPM127.8 / 位相+0.070s） ----------
+  const PERIOD = 0.46948, OFFSET = 0.070;
+  const song = new Audio('assets/audio/song.mp3');
+  const now = () => song.currentTime;
+
+  // ---------- 譜面（太鼓ライク: 右から流れて左の判定円で叩く） ----------
+  // 8拍（2小節）ごとにパターンを敷き詰める。段階的に難化＋「ダ-ダ-ダダダンス」節
+  const PATTERNS = [
+    [0, 2, 4, 6],
+    [0, 1, 2, 4, 5, 6],
+    [0, .5, 1, 4, 4.5, 5],
+    [0, .5, 1.5, 2, 4, 4.5, 5.5, 6],
+    [0, .5, 1, 2.5, 3, 4, 4.5, 5, 6.5],
+  ];
+  const PATSEQ = [0, 0, 1, 0, 1, 2, 1, 2, 4, 2, 3, 4, 1, 2, 4, 3, 4, 2, 3, 4];
+  const patFor = bi => PATTERNS[bi < PATSEQ.length ? PATSEQ[bi] : PATSEQ[PATSEQ.length - 3 + (bi % 3)]];
+  const SONG_LEN = 184.96, CHART = [];
+  for (let bi = 0; ; bi++) {
+    const base = OFFSET + (8 + bi * 8) * PERIOD;          // 最初の2小節（カウントダウン）は空ける
+    if (base > SONG_LEN - 4) break;
+    for (const off of patFor(bi)) {
+      const t = base + off * PERIOD;
+      if (t < SONG_LEN - 3.5) CHART.push({ t, small: off % 1 !== 0, hit: false, missed: false });
+    }
+  }
+  const HITX = 218, LANEY = H * .565, SPEED = 330;        // px/s（約3.2秒先まで見える）
+  const WIN = 0.16;                                        // 判定窓 ±160ms
+
+  const QUIZ = [
+    { t: 22,  q: 'Q. この きょくの いみは？',      a: ['あい', 'じゆう', 'はんこう'] },
+    { t: 43,  q: 'Q. いまの BPMは？',              a: ['120', '127.8', '132'] },
+    { t: 62,  q: 'Q. ダダイズムの はじまりは？',    a: ['1916ねん', '1923ねん', '1945ねん'] },
+    { t: 81,  q: 'Q. ただしい ステップは？',        a: ['みぎから', 'ひだりから', 'かかとから'] },
+    { t: 100, q: 'Q. この おどりの てんすうは？',  a: ['85てん', '92てん', '100てん'] },
+    { t: 121, q: 'Q. サビは あと なんかい？',      a: ['1かい', '2かい', '3かい'] },
+    { t: 140, q: 'Q. YES か NO か？',              a: ['YES', 'NO'] },
+    { t: 160, q: 'Q. なぜ おどってる？',            a: ['たのしいから', 'くせ', 'しめきり'] },
+  ];
+
+  const POSES = ['p1','p2','p3','p4','p5','p6'], BGS = ['b1','b2','b3','b4','b5','b6','b7','b8','b9','b10'],
+        TRAPS = ['t1','t2','t3'];
+
+  let groove = 40, comboN = 0, maxCombo = 0, thinkCount = 0, hitN = 0;
+  let freezeUntil = -1, quizIdx = 0, quizOpen = false, started = false;
+  let burst = 0;   // 判定円のヒット炸裂
+
+  // ---------- SE ----------
+  let AC = null;
+  const ac = () => AC || (AC = new (window.AudioContext || window.webkitAudioContext)());
+  function chip(freq, dur, type, gain, slide) { try {
+    const t = ac().currentTime, o = ac().createOscillator(), g = ac().createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(ac().destination); o.start(t); o.stop(t + dur + .02);
+  } catch (_) {} }
+  const seHit = () => chip(2200, .06, 'square', .08);
+  const seScratch = () => chip(900, .45, 'sawtooth', .12, 70);
+
+  // ---------- タップ ----------
+  const DA = ['ダ!', 'DA!', 'ダッ!', 'ダ・ダ!'];
+  const DACOL = ['#ffd400', '#e6007e', '#00b3d9', '#fffdf5'];
+  function stampDA(x, y, txt, col) {
+    const d = document.createElement('div');
+    d.className = 'da'; d.textContent = txt;
+    d.style.cssText = `left:${x}px; top:${y}px; color:${col}; --rot:${(Math.random()*36-18).toFixed(0)}deg;`;
+    stage.appendChild(d);
+    setTimeout(() => d.remove(), 600);
+  }
+  stage.addEventListener('pointerdown', e => {
+    if (!started || song.ended) return;
+    const t = now();
+    if (t < freezeUntil) return;
+    const r = stage.getBoundingClientRect();
+    const sx = (HITX / W) * r.width, sy = (LANEY / H) * r.height;
+    // 最寄りの未処理ノーツに照合
+    let best = null, bestD = WIN;
+    for (const n of CHART) {
+      if (n.hit || n.missed) continue;
+      const d = Math.abs(n.t - t);
+      if (d < bestD) { bestD = d; best = n; }
+    }
+    if (best) {
+      best.hit = true; hitN++;
+      comboN++; maxCombo = Math.max(maxCombo, comboN);
+      groove = Math.min(100, groove + 2);
+      burst = 1;
+      stampDA(sx, sy - r.height * .1, DA[comboN % DA.length], DACOL[comboN % DACOL.length]);
+      seHit();
+      hintlane.style.opacity = 0;
+      if (comboN % 16 === 0) { flash.style.opacity = .35; setTimeout(() => flash.style.opacity = 0, 90); }
+    } else {
+      comboN = 0;
+      groove = Math.max(0, groove - 1);
+      stampDA(e.clientX - r.left, e.clientY - r.top, '…', 'rgba(255,253,245,.5)');
+    }
+  });
+
+  // ---------- クイズ罠 ----------
+  function openQuiz(qz) {
+    quizOpen = true;
+    quiz.classList.remove('crumble'); quiz.style.opacity = 1;
+    quiz.querySelector('.q').textContent = qz.q;
+    const ans = quiz.querySelector('.ans'); ans.innerHTML = '';
+    qz.a.forEach(a => {
+      const b = document.createElement('button'); b.textContent = a;
+      b.addEventListener('pointerdown', e => e.stopPropagation());
+      b.addEventListener('click', e => { e.stopPropagation(); trap(); });
+      ans.appendChild(b);
+    });
+    quiz.classList.add('on');
+    setTimeout(() => { if (quizOpen) dismissQuiz(true); }, 4200);
+    if (PEEK === 'trap') setTimeout(() => quiz.querySelector('button').click(), 900);
+  }
+  function dismissQuiz(bonus) {
+    quizOpen = false;
+    quiz.classList.remove('on'); quiz.classList.add('crumble');
+    if (bonus) groove = Math.min(100, groove + 5);
+  }
+  function trap() {
+    if (!quizOpen) return;
+    dismissQuiz(false);
+    thinkCount++;
+    groove = Math.max(0, groove - 30);
+    comboN = 0;
+    freezeUntil = now() + 2;
+    seScratch();
+    dancer.src = IMG(TRAPS[thinkCount % TRAPS.length]);
+    bg.style.opacity = 0;
+    think.style.opacity = 1;
+    setTimeout(() => { think.style.opacity = 0; }, 1900);
+  }
+
+  // ---------- レーン描画 ----------
+  function drawLane(t) {
+    lctx.clearRect(0, 0, W, H);
+    const beat = (t - OFFSET) / PERIOD;
+    // 帯
+    lctx.fillStyle = 'rgba(17,17,17,.52)';
+    lctx.fillRect(0, LANEY - 52, W, 104);
+    lctx.fillStyle = 'rgba(255,253,245,.85)';
+    lctx.fillRect(0, LANEY - 52, W, 3); lctx.fillRect(0, LANEY + 49, W, 3);
+    // 判定円（拍でパルス）
+    const pulse = 1 + Math.max(0, .18 - (beat % 1) * .5);
+    lctx.save();
+    lctx.translate(HITX, LANEY);
+    lctx.strokeStyle = '#fffdf5'; lctx.lineWidth = 5;
+    lctx.beginPath(); lctx.arc(0, 0, 40 * pulse, 0, Math.PI * 2); lctx.stroke();
+    lctx.strokeStyle = 'rgba(255,253,245,.35)'; lctx.lineWidth = 2;
+    lctx.beginPath(); lctx.arc(0, 0, 48 * pulse, 0, Math.PI * 2); lctx.stroke();
+    if (burst > 0) {
+      lctx.strokeStyle = `rgba(255,212,0,${burst})`; lctx.lineWidth = 7;
+      lctx.beginPath(); lctx.arc(0, 0, 40 + (1 - burst) * 46, 0, Math.PI * 2); lctx.stroke();
+      burst = Math.max(0, burst - .07);
+    }
+    lctx.restore();
+    // ノーツ
+    lctx.textAlign = 'center'; lctx.textBaseline = 'middle';
+    for (const n of CHART) {
+      const x = HITX + (n.t - t) * SPEED;
+      if (x < -60 || x > W + 60) continue;
+      if (n.hit) continue;
+      const rr = n.small ? 24 : 34;
+      const g = lctx.createRadialGradient(x - 6, LANEY - 8, 4, x, LANEY, rr);
+      if (n.missed) { g.addColorStop(0, 'rgba(120,120,120,.5)'); g.addColorStop(1, 'rgba(70,70,70,.4)'); }
+      else if (n.small) { g.addColorStop(0, '#7fe0f2'); g.addColorStop(1, '#0090b3'); }
+      else { g.addColorStop(0, '#ff7fc0'); g.addColorStop(1, '#c4006b'); }
+      lctx.fillStyle = g;
+      lctx.beginPath(); lctx.arc(x, LANEY, rr, 0, Math.PI * 2); lctx.fill();
+      lctx.lineWidth = 4; lctx.strokeStyle = n.missed ? 'rgba(40,40,40,.4)' : '#111';
+      lctx.stroke();
+      lctx.fillStyle = n.missed ? 'rgba(255,253,245,.4)' : '#fffdf5';
+      lctx.font = `italic bold ${n.small ? 24 : 32}px "Arial Black","Hiragino Kaku Gothic ProN",sans-serif`;
+      lctx.fillText('ダ', x, LANEY + 2);
+    }
+  }
+
+  // ---------- メインループ ----------
+  let lastPoseBeat = -1;
+  function tick() {
+    if (!started) return;
+    const t = now();
+    const beat = Math.floor((t - OFFSET) / PERIOD);
+    // 取り逃し
+    for (const n of CHART) {
+      if (!n.hit && !n.missed && t > n.t + WIN) {
+        n.missed = true;
+        comboN = 0;
+        groove = Math.max(0, groove - .5);
+      }
+    }
+    drawLane(t);
+    // 踊り手・背景
+    if (t >= freezeUntil && groove >= 30 && beat !== lastPoseBeat) {
+      lastPoseBeat = beat;
+      if (beat % 2 === 0) dancer.src = IMG(POSES[(beat >> 1) % POSES.length]);
+      if (groove > 70 && beat % 2 === 1) { bg.src = IMG(BGS[(beat >> 1) % BGS.length]); bg.style.opacity = .45; }
+    }
+    if (groove <= 70 || t < freezeUntil) bg.style.opacity = 0;
+    groove = Math.max(0, groove - 0.5 / 60);
+    gfill.style.width = groove + '%';
+    stage.classList.toggle('gray', groove < 30 || t < freezeUntil);
+    stage.classList.toggle('hot', groove > 70 && t >= freezeUntil);
+    combo.style.opacity = comboN >= 4 ? 1 : 0;
+    if (comboN >= 4) combo.textContent = comboN + ' COMBO';
+    const L = (window.LYRICS || []).find(l => t >= l.t && t <= l.e);
+    lyric.textContent = L ? L.x : '';
+    if (quizIdx < QUIZ.length && t >= QUIZ[quizIdx].t && !quizOpen && t >= freezeUntil) {
+      openQuiz(QUIZ[quizIdx]); quizIdx++;
+    }
+    if (song.ended) { finish(); return; }
+    requestAnimationFrame(tick);
+  }
+
+  function finish() {
+    started = false;
+    $('stat1').textContent = 'たたけた ダ: ' + hitN + ' / ' + CHART.length;
+    $('stat2').textContent = 'さいこうコンボ: ' + maxCombo;
+    $('stat3').textContent = 'あたまが しゃべった かいすう: ' + thinkCount + ' かい';
+    const ov = $('result');
+    ov.style.pointerEvents = 'auto'; ov.style.opacity = 1;
+    $('again').addEventListener('click', () => location.reload());
+  }
+
+  // ---------- カウントダウン → 開始 ----------
+  function startGame() {
+    $('title').style.opacity = 0;
+    setTimeout(() => $('title').style.display = 'none', 1200);
+    dancer.src = IMG('intro');
+    song.play().catch(() => {});
+    count.style.display = 'flex';
+    const cd = ['3', '2', '1', 'GO!'];
+    let i = 0;
+    const iv = setInterval(() => {
+      if (song.currentTime <= 0 && i === 0) return;
+      count.textContent = cd[i];
+      count.style.color = DACOL[i % DACOL.length];
+      i++;
+      if (i > cd.length) {
+        clearInterval(iv); count.style.display = 'none';
+        started = true;
+        hintlane.style.opacity = 1;
+        setTimeout(() => hintlane.style.opacity = 0, 8000);
+        requestAnimationFrame(tick);
+        if (PEEK !== null) autoTap();
+      }
+    }, PERIOD * 1000);
+  }
+
+  // ---------- PEEK: ノーツ自動タップ ----------
+  function autoTap() {
+    if (PEEK === 'end') song.currentTime = 172;
+    const iv = setInterval(() => {
+      if (!started) { clearInterval(iv); return; }
+      const t = now();
+      if (t < freezeUntil) return;
+      const target = CHART.find(n => !n.hit && !n.missed && Math.abs(n.t - t) < 0.05);
+      if (target) {
+        const r = stage.getBoundingClientRect();
+        stage.dispatchEvent(new PointerEvent('pointerdown', {
+          clientX: r.left + r.width * .5, clientY: r.top + r.height * .8, bubbles: true }));
+      }
+    }, 16);
+  }
+
+  // ---------- 起動 ----------
+  const toLoad = ['title','intro','fin'].concat(POSES, BGS, TRAPS);
+  let loaded = 0;
+  const startBtn = $('start');
+  toLoad.forEach(n => { const im = new Image(); im.onload = im.onerror = () => {
+    loaded++;
+    startBtn.textContent = loaded >= toLoad.length ? 'DANCE!' : `LOADING… ${Math.round(loaded/toLoad.length*100)}%`;
+    if (loaded >= toLoad.length) { startBtn.disabled = false; if (PEEK !== null) startBtn.click(); }
+  }; im.src = IMG(n); });
+
+  startBtn.addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>

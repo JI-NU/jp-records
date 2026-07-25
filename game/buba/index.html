@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>ブーバ・キキ — でこぼこのまま | JP RECORDS</title>
+<meta name="description" content="JP「ブーバ・キキ」の世界。とがったカタチをまわして、丸いカタチに寄り添わせる。ぴったり埋めたら食い込む。埋まらない隙間が、ちょうどいい。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#2a2140; touch-action:none; }
+  body { font-family:"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif; color:#fff4f0;
+         display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; }
+
+  #stage { position:relative; aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9));
+           background:#2a2140; overflow:hidden; }
+  #scene { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; transition:opacity 1.2s ease;
+           filter:brightness(.8) saturate(.9); }
+  #cv { position:absolute; inset:0; width:100%; height:100%; cursor:grab; }
+
+  #mono { position:absolute; left:0; right:0; top:6%; text-align:center; pointer-events:none; }
+  .mline { font-size:clamp(15px,2.8vh,26px); letter-spacing:.14em; line-height:1.9; color:#fff8f4;
+           text-shadow:0 2px 14px rgba(42,33,64,.95), 0 0 26px rgba(42,33,64,.9);
+           opacity:0; transition:opacity .9s ease; }
+  .mline.on { opacity:1; }
+
+  #rot { position:absolute; right:3.5%; bottom:5%; display:flex; gap:1.6vh; }
+  .rbtn { width:8.5vh; height:8.5vh; border-radius:50%; font-size:3.4vh; color:#fff4f0; cursor:pointer;
+          background:rgba(120,90,200,.35); border:2px solid rgba(255,244,240,.55);
+          box-shadow:0 4px 16px rgba(0,0,0,.35); transition:all .15s; }
+  .rbtn:active { transform:scale(.92); background:rgba(120,90,200,.6); }
+
+  #rounds { position:absolute; left:3.5%; top:5%; display:flex; gap:1vh; pointer-events:none; }
+  .rdot { width:1.6vh; height:1.6vh; border-radius:50%; border:1px solid rgba(255,244,240,.6); }
+  .rdot.done { background:#ffce8a; border-color:#ffce8a; }
+
+  #ui { position:absolute; left:0; right:0; bottom:7%; display:none; flex-direction:column; align-items:center; gap:1.8vh; z-index:5; }
+  #ui.on { display:flex; }
+  .cbtn { font-family:inherit; font-size:clamp(15px,2.5vh,22px); letter-spacing:.2em; text-indent:.2em; color:#fff4f0;
+          background:rgba(70,52,120,.85); border:2px solid rgba(255,206,138,.6); border-radius:2em;
+          padding:.65em 2em; cursor:pointer; transition:all .3s; }
+  .cbtn:hover { background:rgba(255,206,138,.22); box-shadow:0 0 20px rgba(255,206,138,.35); }
+  .qrow { display:flex; gap:4vh; }
+
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:3vh; text-align:center; z-index:10; }
+  #title { background:rgba(42,33,64,.4); transition:opacity 1.6s; }
+  #title .bg { position:absolute; inset:0; z-index:-1; }
+  #title .bg img { width:100%; height:100%; object-fit:cover; filter:brightness(.85); }
+  #title h1 { font-size:clamp(40px,9vh,88px); font-weight:800; letter-spacing:.14em;
+              text-shadow:0 4px 0 rgba(80,50,140,.8), 0 0 34px rgba(255,160,140,.5); }
+  #title .sub { font-size:clamp(13px,2.2vh,18px); letter-spacing:.3em; text-indent:.3em; color:rgba(255,248,244,.92);
+                text-shadow:0 2px 10px rgba(42,33,64,.9); }
+  #start { margin-top:3vh; font-family:inherit; font-size:clamp(16px,2.6vh,24px); font-weight:800; letter-spacing:.24em; text-indent:.24em;
+           color:#3a2a56; background:#ffce8a; border:none; border-radius:2em;
+           box-shadow:0 5px 0 #c08b4a, 0 0 26px rgba(255,206,138,.4); padding:.8em 2.2em; cursor:pointer; transition:all .15s; }
+  #start:disabled { opacity:.4; cursor:default; }
+  #start:not(:disabled):active { transform:translateY(4px); box-shadow:0 1px 0 #c08b4a; }
+  #title .credit { position:absolute; bottom:3vh; font-size:12px; letter-spacing:.2em; color:rgba(255,248,244,.6); }
+
+  #ending { background:#1c1630; opacity:0; pointer-events:none; transition:opacity 2.5s ease; z-index:20; }
+  #ending .bg { position:absolute; inset:0; }
+  #ending .bg img { width:100%; height:100%; object-fit:fill; transition:opacity 1.2s ease; }
+  #elyric { position:relative; font-size:clamp(20px,3.6vh,34px); letter-spacing:.14em; line-height:2; color:#fff8f4;
+            text-shadow:0 0 14px rgba(28,22,48,.95), 0 2px 24px rgba(28,22,48,.9);
+            opacity:0; transition:opacity .9s ease; }
+  #endcard { position:relative; display:none; flex-direction:column; align-items:center; gap:3.5vh; }
+  #endcard .fin { font-size:clamp(20px,3.8vh,36px); letter-spacing:.22em; text-indent:.22em; }
+  #again { font-family:inherit; font-size:clamp(13px,2.1vh,17px); letter-spacing:.26em; text-indent:.26em;
+           color:rgba(255,248,244,.85); background:rgba(42,33,64,.5); border:1px solid rgba(255,206,138,.45);
+           border-radius:2em; padding:.5em 1.5em; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img id="scene" src="assets/img/r1.jpg" alt="">
+  <canvas id="cv" width="1280" height="720"></canvas>
+  <div id="rounds"></div>
+  <div id="mono"><div class="mline" id="mline"></div></div>
+  <div id="rot">
+    <button class="rbtn" id="rl">⟲</button>
+    <button class="rbtn" id="rr">⟳</button>
+  </div>
+  <div id="ui"></div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="bg"><img src="assets/img/title.jpg" alt=""></div>
+  <h1>ブーバ・キキ</h1>
+  <div class="sub">— うまらない すきまが ちょうどいい —</div>
+  <button id="start" disabled>よみこみちゅう…</button>
+  <div class="credit">JP — AI MUSIC #131「ブーバ・キキ」</div>
+</div>
+
+<div class="overlay" id="ending">
+  <div class="bg"><img id="endbg" src="assets/img/e1.jpg" alt=""></div>
+  <div id="elyric"></div>
+  <div id="endcard">
+    <div class="fin">でこぼこのまま、また あした</div>
+    <button id="again">— もういちど よりそう —</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), scene = $('scene'), cv = $('cv'), ctx = cv.getContext('2d'),
+        mline = $('mline'), ui = $('ui'), rounds = $('rounds');
+  const IMG = n => `assets/img/${n}.jpg`;
+  const PEEK = new URLSearchParams(location.search).get('peek');
+  const W = 1280, H = 720;
+
+  const bgm = new Audio('assets/audio/bgm_loop.mp3'); bgm.loop = true; bgm.volume = .4;
+  const endTrack = new Audio('assets/audio/ending.mp3');
+
+  // ---------- 音象徴SE ----------
+  let AC = null;
+  const ac = () => AC || (AC = new (window.AudioContext || window.webkitAudioContext)());
+  function seBuba() { try {
+    const t = ac().currentTime, o = ac().createOscillator(), g = ac().createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(340, t); o.frequency.exponentialRampToValueAtTime(210, t + .3);
+    g.gain.setValueAtTime(.14, t); g.gain.exponentialRampToValueAtTime(.0001, t + .38);
+    o.connect(g).connect(ac().destination); o.start(t); o.stop(t + .4);
+  } catch (_) {} }
+  function seKiki(freq) { try {
+    const t = ac().currentTime, o = ac().createOscillator(), g = ac().createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(freq || 2400, t); o.frequency.exponentialRampToValueAtTime((freq || 2400) * 1.3, t + .06);
+    g.gain.setValueAtTime(.05, t); g.gain.exponentialRampToValueAtTime(.0001, t + .09);
+    o.connect(g).connect(ac().destination); o.start(t); o.stop(t + .1);
+  } catch (_) {} }
+  function seFit() { seBuba(); setTimeout(() => seKiki(), 140); setTimeout(seBuba, 300); }
+
+  // ---------- 図形（シード付き） ----------
+  let seed = 131;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+
+  function makeBlob(cx, cy, R, nb) {
+    const bumps = [];
+    for (let i = 0; i < nb; i++) bumps.push({ n: 2 + Math.floor(rnd() * 3), a: .1 + rnd() * .14, ph: rnd() * Math.PI * 2 });
+    const base = th => R * (1 + bumps.reduce((s, b) => s + b.a * Math.sin(b.n * th + b.ph), 0));
+    return { cx, cy, rot: 0, breath: 0, base,
+             rAt(th, ts) { const br = this.breath ? 1 + this.breath * Math.sin((ts || 0) / 1000 * 1.8) : 1;
+                           return this.base(th - this.rot) * br; },
+             rMax(th) { return this.base(th - this.rot) * (1 + this.breath); } };
+  }
+  function makeKiki(ns) {
+    const pts = [];
+    for (let i = 0; i < ns; i++) {
+      const a0 = i / ns * Math.PI * 2;
+      const outer = 64 + rnd() * 34, inner = 26 + rnd() * 8;
+      pts.push({ r: outer, a: a0 });
+      pts.push({ r: inner, a: a0 + Math.PI / ns });
+    }
+    return pts;
+  }
+
+  // ---------- ラウンド（毎回ルールが変わる） ----------
+  const ROUNDS = [
+    { bg:'r1', mode:'basic',  nb:2, ns:5,
+      intro:'とがりを うごかして、まるに よりそわせる（⟲⟳で かいてん）',
+      ok:'おお、はまってない のに、おさまった' },
+    { bg:'r2', mode:'swap',   nb:3, ns:6,
+      intro:'こんどは きみが、まるの ばん。とがりは うごかない',
+      ok:'まるく なっても、よりそいかたは おなじだ' },
+    { bg:'r3', mode:'duo',    nb:3, ns:6,
+      intro:'とがりが ふたりに なった。ひとりずつ、じゅんばんに',
+      ok:'みっつ ならんでも、すきまは すきまの まま' },
+    { bg:'r4', mode:'breath', nb:3, ns:7,
+      intro:'この まるは、いきを している。すいこんだ ときに ささらない ように',
+      ok:'いきづかいごと、うけとめた' },
+    { bg:'r5', mode:'night',  nb:4, ns:8,
+      intro:'つきよ。かたちは りんかくだけ。ちかづくと、キキの こえが たかくなる',
+      ok:'めを こらさなくても、もう わかる' },
+  ];
+  let ri = 0, blob = null, kiki = null, kx = 940, ky = 360, krot = 0;
+  let fixedKiki = null, duoPhase = 0;
+  let active = false, fitDone = false, glow = 0, nowTs = 0;
+  const mode = () => ROUNDS[ri].mode;
+  const movable = () => mode() === 'swap' ? 'blob' : 'kiki';
+
+  // ---------- 判定 ----------
+  function kikiPts(k) {
+    return k.pts.map(p => ({
+      x: k.x + Math.cos(p.a + k.rot) * p.r,
+      y: k.y + Math.sin(p.a + k.rot) * p.r,
+      tip: p.r > 50,
+    }));
+  }
+  const activeKiki = () => ({ pts: kiki, x: kx, y: ky, rot: krot });
+  function gapOf(pt) {                 // 呼吸ラウンドは最大吸気で判定（負=食い込み）
+    const dx = pt.x - blob.cx, dy = pt.y - blob.cy;
+    const d = Math.hypot(dx, dy);
+    return d - blob.rMax(Math.atan2(dy, dx));
+  }
+  function evaluate() {
+    const pts = kikiPts(activeKiki());
+    let pen = 0, contacts = 0, closest = 1e9;
+    for (const p of pts) {
+      const g = gapOf(p);
+      if (g < -5) pen++;
+      if (g < closest) closest = g;
+      if (p.tip && g >= -5 && g < 22) contacts++;
+    }
+    let clash = 0;                     // ふたりめ: 先客のとがりと ぶつからない
+    if (fixedKiki) {
+      const fp = kikiPts(fixedKiki);
+      for (const p of pts) for (const q of fp)
+        if (Math.hypot(p.x - q.x, p.y - q.y) < 14) { clash++; break; }
+    }
+    return { pen, contacts, closest, clash,
+             ok: pen === 0 && clash === 0 && closest < 8 && contacts >= 2 };
+  }
+
+  // ---------- 入力 ----------
+  let dragging = false, dx0 = 0, dy0 = 0, lastTick = 0;
+  cv.addEventListener('pointerdown', e => {
+    if (!active) return;
+    const r = stage.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+    const tx = movable() === 'blob' ? blob.cx : kx, ty = movable() === 'blob' ? blob.cy : ky;
+    if (Math.hypot(x - tx, y - ty) < 170) { dragging = true; dx0 = x - tx; dy0 = y - ty; cv.style.cursor = 'grabbing'; }
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!dragging || !active) return;
+    const r = stage.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * W - dx0, y = (e.clientY - r.top) / r.height * H - dy0;
+    if (movable() === 'blob') { blob.cx = x; blob.cy = y; } else { kx = x; ky = y; }
+    if (mode() === 'night') {                      // 月夜: 近いほど こえが たかく なる
+      const v = evaluate();
+      const nowMs = performance.now();
+      const gap = Math.max(0, v.closest);
+      const interval = 90 + Math.min(600, gap * 4);
+      if (nowMs - lastTick > interval) { lastTick = nowMs; seKiki(1200 + Math.max(0, 260 - gap) * 9); }
+    }
+  });
+  function release() {
+    if (!dragging) return;
+    dragging = false; cv.style.cursor = 'grab';
+    if (!active) return;
+    const v = evaluate();
+    if (v.ok) fit();
+    else if (v.clash > 0) { seKiki(); flashLine('とがり どうしが ぶつかってる'); }
+    else if (v.pen > 0) { seKiki(); flashLine('めりこんでる……　すきまは のこして いい'); }
+  }
+  cv.addEventListener('pointerup', release);
+  cv.addEventListener('pointerleave', release);
+  const rot = dir => {
+    if (!active) return;
+    if (movable() === 'blob') blob.rot += dir * Math.PI / 18;
+    else krot += dir * Math.PI / 18;
+    seKiki();
+  };
+  $('rl').addEventListener('click', () => rot(-1));
+  $('rr').addEventListener('click', () => rot(1));
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') rot(-1);
+    if (e.key === 'ArrowRight') rot(1);
+  });
+
+  let flashTimer = null;
+  function flashLine(s, ms) {
+    mline.textContent = s; mline.classList.add('on');
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => mline.classList.remove('on'), ms || 1800);
+  }
+
+  // ---------- 描画 ----------
+  const night = () => mode() === 'night';
+  function blobPath(ts) {
+    ctx.beginPath();
+    for (let a = 0; a <= Math.PI * 2 + .02; a += .04) {
+      const rr = blob.rAt(a, ts);
+      const x = blob.cx + Math.cos(a) * rr, y = blob.cy + Math.sin(a) * rr;
+      a === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+  function kikiPath(k) {
+    const pts = kikiPts(k);
+    ctx.beginPath();
+    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+  }
+  function drawShapes(ts) {
+    ctx.clearRect(0, 0, W, H);
+    if (!blob) return;
+    // ブーバ
+    blobPath(ts);
+    if (night()) {
+      ctx.strokeStyle = 'rgba(255,205,170,.85)'; ctx.lineWidth = 2.5;
+      ctx.shadowColor = 'rgba(255,180,140,.7)'; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
+    } else {
+      const bg = ctx.createRadialGradient(blob.cx - 30, blob.cy - 40, 30, blob.cx, blob.cy, 220);
+      bg.addColorStop(0, '#ffd9c4'); bg.addColorStop(1, '#f79f88');
+      ctx.fillStyle = bg; ctx.shadowColor = 'rgba(255,170,140,.55)'; ctx.shadowBlur = 34; ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    if (glow > 0) {
+      blobPath(ts);
+      ctx.strokeStyle = `rgba(255,214,130,${glow * .9})`;
+      ctx.lineWidth = 5; ctx.shadowColor = 'rgba(255,214,130,.9)'; ctx.shadowBlur = 22;
+      ctx.stroke(); ctx.shadowBlur = 0;
+    }
+    // 先客のキキ（すこし透けて定着）
+    if (fixedKiki) drawKiki(fixedKiki, .75);
+    // 操作中のキキ
+    drawKiki(activeKiki(), 1);
+    // 目
+    if (!night()) { eye(blob.cx - 26, blob.cy - 22); eye(blob.cx + 26, blob.cy - 22); }
+    else { glowEye(blob.cx - 26, blob.cy - 22, '#ffcdaa'); glowEye(blob.cx + 26, blob.cy - 22, '#ffcdaa'); }
+    function eye(x, y, s = 1) {
+      ctx.fillStyle = '#312446'; ctx.beginPath(); ctx.arc(x, y, 7 * s, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + 2 * s, y - 2 * s, 2.4 * s, 0, Math.PI * 2); ctx.fill();
+    }
+    function glowEye(x, y, c) {
+      ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    }
+    function drawKiki(k, alpha) {
+      ctx.globalAlpha = alpha;
+      kikiPath(k);
+      if (night()) {
+        ctx.strokeStyle = 'rgba(185,156,245,.9)'; ctx.lineWidth = 2.2;
+        ctx.shadowColor = 'rgba(150,120,255,.8)'; ctx.shadowBlur = 14; ctx.stroke(); ctx.shadowBlur = 0;
+        glowEye(k.x - 16, k.y - 12, '#b99cf5'); glowEye(k.x + 16, k.y - 12, '#b99cf5');
+      } else {
+        const kg = ctx.createRadialGradient(k.x - 14, k.y - 20, 10, k.x, k.y, 110);
+        kg.addColorStop(0, '#b99cf5'); kg.addColorStop(1, '#6a4ed9');
+        ctx.fillStyle = kg; ctx.shadowColor = 'rgba(140,110,255,.6)'; ctx.shadowBlur = 26; ctx.fill();
+        ctx.shadowBlur = 0;
+        if (glow > 0) {
+          kikiPath(k);
+          ctx.strokeStyle = `rgba(255,214,130,${glow * .9})`;
+          ctx.lineWidth = 4; ctx.shadowColor = 'rgba(255,214,130,.9)'; ctx.shadowBlur = 18;
+          ctx.stroke(); ctx.shadowBlur = 0;
+        }
+        eye(k.x - 16, k.y - 12, .8); eye(k.x + 16, k.y - 12, .8);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  function loop(ts) {
+    nowTs = ts;
+    drawShapes(ts);
+    if (fitDone && glow < 1) glow = Math.min(1, glow + .03);
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- ラウンド進行 ----------
+  function startRound(i) {
+    ri = i;
+    [...rounds.children].forEach((d, k) => d.classList.toggle('done', k < i));
+    scene.style.opacity = 0;
+    setTimeout(() => {
+      scene.src = IMG(ROUNDS[i].bg);
+      scene.onload = () => {
+        scene.onload = null;
+        scene.style.opacity = 1;
+        const m = ROUNDS[i].mode;
+        fixedKiki = null; duoPhase = 0;
+        blob = makeBlob(m === 'swap' ? 380 : 430, 380, 150 + rnd() * 20, ROUNDS[i].nb);
+        if (m === 'swap') { blob.cx = 340; blob.cy = 340 + rnd() * 60; }
+        if (m === 'breath') blob.breath = .07;
+        kiki = makeKiki(ROUNDS[i].ns);
+        if (m === 'swap') { kx = 880; ky = 380; krot = rnd() * Math.PI; }
+        else { kx = 950; ky = 340 + rnd() * 60; krot = rnd() * Math.PI; }
+        fitDone = false; glow = 0; active = true;
+        flashLine(ROUNDS[i].intro, 3400);
+        if (PEEK !== null) setTimeout(autoSolve, 1100);
+      };
+    }, i === 0 ? 100 : 1300);
+  }
+  function fit() {
+    if (mode() === 'duo' && duoPhase === 0) {   // ひとりめ定着 → ふたりめ登場
+      duoPhase = 1;
+      fixedKiki = { pts: kiki, x: kx, y: ky, rot: krot };
+      seFit();
+      flashLine('……ふたりめが きた');
+      kiki = makeKiki(ROUNDS[ri].ns - 1);
+      kx = 1020; ky = 260 + rnd() * 160; krot = rnd() * Math.PI;
+      if (PEEK !== null) setTimeout(autoSolve, 1100);
+      return;
+    }
+    active = false; fitDone = true;
+    seFit();
+    [...rounds.children].forEach((d, k) => d.classList.toggle('done', k <= ri));
+    mline.textContent = ROUNDS[ri].ok; mline.classList.add('on');
+    setTimeout(() => {
+      mline.classList.remove('on');
+      if (ri + 1 < ROUNDS.length) startRound(ri + 1);
+      else lastScene();
+    }, 2400);
+  }
+  function lastScene() {
+    mline.textContent = 'にてなくても、かさなれる'; mline.classList.add('on');
+    ui.innerHTML = ''; ui.classList.add('on');
+    const b = document.createElement('button'); b.className = 'cbtn'; b.textContent = '— おなじ よるを わけあう —';
+    b.addEventListener('click', e => { e.stopPropagation(); ui.classList.remove('on'); mline.classList.remove('on'); startEnding(); });
+    ui.appendChild(b);
+    if (PEEK !== null) setTimeout(() => b.click(), 900);
+  }
+
+  // ---------- 音象徴クイズ（30秒の入口） ----------
+  function quiz() {
+    blob = makeBlob(420, 380, 130, 2);
+    kiki = makeKiki(7); kx = 880; ky = 380; krot = .3;
+    mline.textContent = 'どっちが 「ブーバ」だと おもう？'; mline.classList.add('on');
+    ui.innerHTML = ''; ui.classList.add('on');
+    const row = document.createElement('div'); row.className = 'qrow';
+    const bL = document.createElement('button'); bL.className = 'cbtn'; bL.textContent = 'ひだり';
+    const bR = document.createElement('button'); bR.className = 'cbtn'; bR.textContent = 'みぎ';
+    const answer = left => {
+      ui.classList.remove('on'); mline.classList.remove('on');
+      left ? seBuba() : seKiki();
+      setTimeout(() => {
+        flashLine(left ? 'せかいの 95%も、そう いうらしい' : 'きみは 5%がわだ。それも いい');
+        setTimeout(() => startRound(0), 2200);
+      }, 500);
+    };
+    bL.addEventListener('click', () => answer(true));
+    bR.addEventListener('click', () => answer(false));
+    row.appendChild(bL); row.appendChild(bR); ui.appendChild(row);
+    if (PEEK !== null) setTimeout(() => bL.click(), 1200);
+  }
+
+  // ---------- エンディング（ending.mp3 = 原曲120.4s〜 / SRT実測−120.4s） ----------
+  const LYRICS = [
+    { t: 0.16,  e: 2.01,  x: 'ブーバ って 僕が呼ぶ',                     img: 'e1' },
+    { t: 2.04,  e: 4.11,  x: 'キキ って 君が呼ぶ',                       img: 'e1' },
+    { t: 4.14,  e: 6.28,  x: 'それだけで なぜか',                        img: 'e1' },
+    { t: 6.30,  e: 8.20,  x: 'ここに いられる',                          img: 'e1' },
+    { t: 8.23,  e: 12.29, x: 'ブーバ・キキ でこぼこのまま 重なってく',   img: 'e2' },
+    { t: 12.31, e: 16.33, x: '埋まらない隙間に 君がいる',                img: 'e2' },
+    { t: 16.36, e: 20.33, x: 'まるい月と とがった星',                    img: 'e3' },
+    { t: 20.35, e: 24.49, x: 'おなじ夜を 分けあってる',                  img: 'e3' },
+    { t: 24.51, e: 28.41, x: 'ブーバ、ブーバ…　キキッ、キキッ…',        img: 'e4' },
+  ];
+  function startEnding() {
+    const f = setInterval(() => { bgm.volume = Math.max(0, bgm.volume - .04); if (bgm.volume <= 0) { bgm.pause(); clearInterval(f); } }, 100);
+    const ov = $('ending'), ly = $('elyric'), bg = $('endbg');
+    ov.style.pointerEvents = 'auto'; ov.style.opacity = 1;
+    endTrack.volume = 1; endTrack.play().catch(() => {});
+    let li = -1;
+    const tick = () => {
+      const t = endTrack.currentTime;
+      const cur = LYRICS.findIndex(L => t >= L.t && t <= L.e);
+      if (cur !== li) {
+        if (cur === -1) ly.style.opacity = 0;
+        else {
+          ly.textContent = LYRICS[cur].x; ly.style.opacity = 1;
+          if (bg.src.indexOf(LYRICS[cur].img) === -1) bg.src = IMG(LYRICS[cur].img);
+        }
+        li = cur;
+      }
+      if (!endTrack.ended) requestAnimationFrame(tick);
+      else { ly.style.opacity = 0; setTimeout(() => $('endcard').style.display = 'flex', 1500); }
+    };
+    requestAnimationFrame(tick);
+    $('again').addEventListener('click', () => location.reload());
+  }
+
+  // ---------- PEEK: 自動ソルバ（可動側を回転×接近の総当り＝判定の自己検証） ----------
+  function autoSolve() {
+    let best = null;
+    const isBlob = movable() === 'blob';
+    const anchor = isBlob ? { x: kx, y: ky } : { x: blob.cx, y: blob.cy };   // 寄り添う相手
+    const saved = isBlob ? { x: blob.cx, y: blob.cy, r: blob.rot } : { x: kx, y: ky, r: krot };
+    outer:
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 24) {
+      if (isBlob) blob.rot = a; else krot = a;
+      for (let dir = -1.0; dir <= 1.0; dir += 0.25) {
+        for (let d = 380; d >= 140; d -= 4) {
+          const px = anchor.x + Math.cos(dir + (isBlob ? Math.PI : 0)) * d;
+          const py = anchor.y + Math.sin(dir + (isBlob ? Math.PI : 0)) * d;
+          if (isBlob) { blob.cx = px; blob.cy = py; } else { kx = px; ky = py; }
+          const v = evaluate();
+          if (v.pen > 0 || v.clash > 0) break;
+          if (v.ok) { best = { a, x: px, y: py }; break outer; }
+        }
+      }
+    }
+    if (best) {
+      if (isBlob) blob.rot = best.a; else krot = best.a;
+      const sx = saved.x, sy = saved.y, t0 = performance.now();
+      const anim = () => {
+        const p = Math.min(1, (performance.now() - t0) / 1100);
+        const x = sx + (best.x - sx) * p, y = sy + (best.y - sy) * p;
+        if (isBlob) { blob.cx = x; blob.cy = y; } else { kx = x; ky = y; }
+        if (p < 1) requestAnimationFrame(anim);
+        else { const v = evaluate(); if (v.ok) fit(); else console.error('SOLVER: settle failed round ' + ri); }
+      };
+      requestAnimationFrame(anim);
+    } else {
+      if (isBlob) { blob.cx = saved.x; blob.cy = saved.y; blob.rot = saved.r; }
+      else { kx = saved.x; ky = saved.y; krot = saved.r; }
+      console.error('SOLVER: no fit found round ' + ri + ' phase ' + duoPhase);
+    }
+  }
+
+  // ---------- 起動 ----------
+  ROUNDS.forEach(() => { const d = document.createElement('div'); d.className = 'rdot'; rounds.appendChild(d); });
+  const toLoad = ['title','r1','r2','r3','r4','r5','e1','e2','e3','e4'];
+  let loaded = 0;
+  const startBtn = $('start');
+  toLoad.forEach(n => { const im = new Image(); im.onload = im.onerror = () => {
+    loaded++;
+    startBtn.textContent = loaded >= toLoad.length ? '— よりそいはじめる —' : `よみこみちゅう… ${Math.round(loaded/toLoad.length*100)}%`;
+    if (loaded >= toLoad.length) { startBtn.disabled = false; if (PEEK !== null) startBtn.click(); }
+  }; im.src = IMG(n); });
+
+  startBtn.addEventListener('click', () => {
+    $('title').style.opacity = 0;
+    setTimeout(() => $('title').style.display = 'none', 1500);
+    bgm.play().catch(() => {});
+    requestAnimationFrame(loop);
+    if (PEEK === 'ending') { startEnding(); return; }
+    quiz();
+  });
+})();
+</script>
+</body>
+</html>

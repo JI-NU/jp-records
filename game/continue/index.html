@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>CONTINUE? — つづきから | JP RECORDS</title>
+<meta name="description" content="JP「CONTINUE?」の世界。死んでも最初には戻らない。コインを入れて、つづきから。きみのセーブデータは消えない。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#05060e; touch-action:manipulation; }
+  body { font-family:"Courier New",monospace; font-weight:bold; color:#d8f4ff;
+         display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; }
+
+  #stage { position:relative; aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9));
+           background:#05060e; overflow:hidden; cursor:pointer; }
+  #game { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
+
+  #hud { position:absolute; left:2.5%; top:3.5%; right:2.5%; display:flex; justify-content:space-between;
+         font-size:clamp(12px,2.3vh,19px); letter-spacing:.12em; pointer-events:none;
+         text-shadow:2px 2px 0 #05060e, 0 0 8px rgba(90,240,255,.6); }
+  #hud span { background:rgba(5,6,14,.55); padding:.15em .5em; }
+  #cap { position:absolute; left:0; right:0; top:16%; text-align:center; font-size:clamp(14px,2.8vh,24px);
+         letter-spacing:.14em; color:#8ef6ff; text-shadow:2px 2px 0 #05060e, 0 0 12px rgba(90,240,255,.5);
+         opacity:0; transition:opacity .8s; pointer-events:none; }
+
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:2.6vh; text-align:center; z-index:10; }
+  #title { background:rgba(5,6,14,.42); transition:opacity 1.2s; }
+  #title .bg { position:absolute; inset:0; z-index:-1; }
+  #title .bg img { width:100%; height:100%; object-fit:cover; image-rendering:pixelated; filter:brightness(.85); }
+  #title h1 { font-size:clamp(38px,9vh,86px); letter-spacing:.06em; color:#8ef6ff;
+              text-shadow:0 0 18px rgba(90,240,255,.8), 4px 4px 0 #0a1130; }
+  #title .sub { font-size:clamp(13px,2.2vh,18px); letter-spacing:.24em; color:#d8f4ff; text-shadow:2px 2px 0 #05060e; }
+  #start { margin-top:2.5vh; font-family:inherit; font-weight:bold; font-size:clamp(16px,2.7vh,24px); letter-spacing:.2em;
+           color:#05060e; background:#8ef6ff; border:none; box-shadow:0 4px 0 #2a7f96, 0 0 22px rgba(90,240,255,.5);
+           padding:.75em 2em; cursor:pointer; }
+  #start:disabled { opacity:.4; cursor:default; }
+  #start:not(:disabled):active { transform:translateY(3px); box-shadow:0 1px 0 #2a7f96; }
+  #title .credit { position:absolute; bottom:3vh; font-size:12px; letter-spacing:.18em; color:rgba(216,244,255,.55); }
+  #title .hint { font-size:clamp(12px,2vh,16px); letter-spacing:.16em; color:#ffd76a; text-shadow:2px 2px 0 #05060e; }
+
+  #gover { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
+           gap:3vh; background:rgba(5,3,8,.82); z-index:6; text-align:center; }
+  #gover .go { font-size:clamp(34px,8vh,76px); letter-spacing:.14em; color:#ff5a76;
+               text-shadow:0 0 20px rgba(255,90,118,.7), 4px 4px 0 #1c0510; }
+  #gover .cq { font-size:clamp(20px,4.4vh,42px); letter-spacing:.12em; color:#d8f4ff; }
+  #gover .num { color:#ffd76a; font-size:clamp(26px,6vh,58px); text-shadow:0 0 16px rgba(255,215,106,.7); }
+  #coinbtn { font-family:inherit; font-weight:bold; font-size:clamp(16px,3vh,27px); letter-spacing:.14em;
+             color:#05060e; background:#ffd76a; border:none; box-shadow:0 5px 0 #8f6b14, 0 0 26px rgba(255,215,106,.45);
+             padding:.8em 1.8em; cursor:pointer; }
+  #coinbtn:active { transform:translateY(4px); box-shadow:0 1px 0 #8f6b14; }
+
+  #ending { background:#05060e; opacity:0; pointer-events:none; transition:opacity 2s ease; z-index:20; }
+  #ending .bg { position:absolute; inset:0; }
+  #ending .bg img { width:100%; height:100%; object-fit:cover; image-rendering:pixelated; transition:opacity 1.2s ease; }
+  #elyric { position:relative; font-size:clamp(19px,3.5vh,33px); letter-spacing:.12em; line-height:2; color:#d8f4ff;
+            text-shadow:0 0 12px rgba(5,6,14,.95), 3px 3px 0 rgba(5,6,14,.9); opacity:0; transition:opacity .9s ease; }
+  #endcard { position:relative; display:none; flex-direction:column; align-items:center; gap:3vh; }
+  #endcard .fin { font-size:clamp(22px,4.6vh,44px); letter-spacing:.18em; color:#8ef6ff; text-shadow:0 0 18px rgba(90,240,255,.7); }
+  #endcard .stat { font-size:clamp(14px,2.5vh,21px); letter-spacing:.14em; color:#ffd76a; text-shadow:2px 2px 0 #05060e; }
+  #again { font-family:inherit; font-weight:bold; font-size:clamp(14px,2.3vh,19px); letter-spacing:.2em;
+           color:rgba(216,244,255,.85); background:transparent; border:2px solid rgba(216,244,255,.5); padding:.5em 1.4em; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="game" width="320" height="180"></canvas>
+  <div id="hud">
+    <span id="dist">0 m</span>
+    <span id="coins">COIN ×0</span>
+    <span id="conts">CONTINUE ×0</span>
+  </div>
+  <div id="cap"></div>
+  <div id="gover">
+    <div class="go">GAME OVER</div>
+    <div class="cq">CONTINUE?　<span class="num" id="cnum">9</span></div>
+    <button id="coinbtn">◎ コインを いれる</button>
+  </div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="bg"><img src="assets/img/title.jpg" alt=""></div>
+  <h1>CONTINUE?</h1>
+  <div class="sub">— リセットは この せかいに ない —</div>
+  <div class="hint">タップ か スペース で ジャンプ</div>
+  <button id="start" disabled>LOADING…</button>
+  <div class="credit">JP — AI MUSIC #112「CONTINUE?」</div>
+</div>
+
+<div class="overlay" id="ending">
+  <div class="bg"><img id="endbg" src="assets/img/clear.jpg" alt=""></div>
+  <div id="elyric"></div>
+  <div id="endcard">
+    <div class="fin">── つづける？</div>
+    <div class="stat" id="endstat"></div>
+    <button id="again">— もういちど —</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('game'), ctx = cv.getContext('2d');
+  const IMG = n => `assets/img/${n}.jpg`;
+  const PEEK = new URLSearchParams(location.search).get('peek');
+  const W = 320, H = 180, GROUND = 150;
+
+  const bgm = new Audio('assets/audio/bgm_loop.mp3'); bgm.loop = true; bgm.volume = .6;
+  const endTrack = new Audio('assets/audio/ending.mp3');
+
+  // ---------- チップSE ----------
+  let AC = null;
+  const ac = () => AC || (AC = new (window.AudioContext || window.webkitAudioContext)());
+  function chip(freq, dur, type = 'square', gain = .07, slide = 0) { try {
+    const t = ac().currentTime, o = ac().createOscillator(), g = ac().createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(ac().destination); o.start(t); o.stop(t + dur + .02);
+  } catch (_) {} }
+  const seJump = () => chip(300, .18, 'square', .06, 780);
+  const seCoin = () => { chip(1320, .07); chip(1760, .16, 'square', .06); };
+  const seDie  = () => chip(520, .5, 'sawtooth', .1, 60);
+  const seTick = () => chip(880, .06);
+  const sePico = () => { [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => chip(f, .09), i * 90)); };
+
+  // ---------- コース（シード付き乱数＝毎回同じ世界） ----------
+  let seed = 112;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  const GOAL = 24000;                      // px（=2400m）
+  // 障害物の使い分け: spike/slime=ジャンプ / pit(広)=二段ジャンプ / bat=飛ばずに走り抜ける / gear=転がってくる（引きつけて跳ぶ）
+  const obstacles = [], coinsArr = [], gears = [];
+  (() => {
+    let x = 700;
+    while (x < GOAL - 600) {
+      const r = rnd(), prog = x / GOAL;
+      if (r < .3) obstacles.push({ type: 'spike', x, w: 14 });
+      else if (r < .52) obstacles.push({ type: 'pit', x, w: 34 + rnd() * (26 + prog * 60) });
+      else if (r < .7) obstacles.push({ type: 'slime', x, w: 14, ph: rnd() * 6 });
+      else if (r < .87) obstacles.push({ type: 'bat', x, w: 16, ph: rnd() * 6 });
+      else if (prog > .18) gears.push({ x0: x, w: 18 });
+      else obstacles.push({ type: 'spike', x, w: 14 });
+      if (rnd() < .75) {
+        const last = obstacles[obstacles.length - 1];
+        const overBat = last && last.type === 'bat' && Math.abs(last.x - x) < 40;
+        const overPit = last && last.type === 'pit' && Math.abs(last.x - x) < 40;
+        // コインで正解の通り道を教える: pit上=弧（跳べ）/ bat下=低い列（跳ぶな）
+        if (overBat) { for (let i = 0; i < 4; i++) coinsArr.push({ x: last.x - 24 + i * 20, y: GROUND - 8, got: false }); }
+        else if (overPit) { for (let i = 0; i < 5; i++) { const t = i / 4; coinsArr.push({ x: last.x - 20 + t * (last.w + 40), y: GROUND - 26 - Math.sin(t * Math.PI) * 26, got: false }); } }
+        else { const n = 2 + Math.floor(rnd() * 4), cy = rnd() < .4 ? GROUND - 54 : GROUND - 28; for (let i = 0; i < n; i++) coinsArr.push({ x: x + 60 + i * 16, y: cy, got: false }); }
+      }
+      x += 190 + rnd() * 220;
+    }
+  })();
+  // 道中に浮かぶ歌詞（2番Aメロ: 距離マイルストーン）
+  const LYRMS = [
+    { m: 400,  x: 'おなじ ボスに　なんども まける' },
+    { m: 800,  x: 'おぼえた はずの　パターンも とぶ' },
+    { m: 1200, x: 'レベルは あがったの　わからない けど' },
+    { m: 1600, x: 'きずだらけの まま　また たちあがる' },
+    { m: 2000, x: 'セーブポイント　ここまでの ぼく' },
+    { m: 2240, x: 'きえて なんか　いないんだ' },
+  ];
+  let lyrIdx = 0;
+
+  // ---------- 主人公スプライト（12×16・コード描画） ----------
+  // 0=透明 1=マント濃紺 2=シアン髪 3=肌 4=白目 5=マント明 6=靴
+  const F = {
+    run1: ['000022220000','000222222000','002233332000','002234342000','002233332000','000111110000','001111111000','011111111100','011511151100','011111111100','001111111000','000111110000','000110011000','001100001100','006600006600','066000000660'],
+    run2: ['000022220000','000222222000','002233332000','002234342000','002233332000','000111110000','001111111000','011111111100','011511151100','011111111100','001111111000','000111110000','000011110000','000110011000','000660066000','000066600000'],
+    jump: ['000022220000','000222222000','002233332000','002234342000','002233332000','000111110000','001111111000','011111111100','011511151100','011111111100','001111111000','000111110000','001100110000','011000011000','066000006600','000000000000'],
+  };
+  const PAL = { 1:'#182448', 2:'#5ff0ff', 3:'#ffd9b8', 4:'#0a1130', 5:'#2c4a8a', 6:'#c8b06a' };
+  function drawHero(px, py, frame) {
+    const map = F[frame];
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 12; x++) {
+      const c = map[y][x];
+      if (c !== '0') { ctx.fillStyle = PAL[c]; ctx.fillRect(px + x, py + y, 1, 1); }
+    }
+  }
+
+  // ---------- 状態 ----------
+  let camX = 0, heroY = GROUND - 16, vy = 0, onGround = true, frame = 0, t0 = 0;
+  let speed = 130, coins = 0, conts = 0, invulnUntil = 0, running = false, dead = false, cleared = false;
+  const BGS = ['bg1', 'bg2', 'bg3', 'bg4', 'bg5'];
+  const bgImgs = {};
+
+  let airJumped = false;
+  function jump() {
+    if (!running || dead) return;
+    if (onGround) { vy = -215; onGround = false; airJumped = false; seJump(); }
+    else if (!airJumped) { vy = -195; airJumped = true; chip(420, .16, 'square', .06, 900); }  // 二段ジャンプ
+  }
+  $('stage').addEventListener('pointerdown', jump);
+  window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); jump(); } });
+
+  // ---------- メインループ ----------
+  let lastT = 0;
+  function loop(ts) {
+    if (!running) return;
+    const dt = Math.min(.04, (ts - lastT) / 1000 || .016); lastT = ts;
+    if (!dead) {
+      speed = 130 + Math.min(60, camX / 400);
+      camX += speed * dt;
+      // 物理
+      vy += 620 * dt; heroY += vy * dt;
+      const hx = camX + 60;
+      const overPit = obstacles.some(o => o.type === 'pit' && hx + 10 > o.x && hx + 2 < o.x + o.w);
+      const floorY = overPit ? H + 40 : GROUND - 16;
+      if (heroY >= floorY && vy >= 0 && !overPit) { heroY = floorY; vy = 0; onGround = true; airJumped = false; }
+      if (heroY > H) die();
+      // 歯車は転がってくる
+      for (const g of gears) {
+        if (g.dead) continue;
+        if (g.x === undefined && g.x0 - camX < W + 60) g.x = g.x0;      // 画面に入ったら動き出す
+        if (g.x !== undefined) { g.x -= 62 * dt; if (g.x < camX - 60) g.dead = true; }
+      }
+      // 当たり
+      if (performance.now() > invulnUntil) {
+        for (const o of obstacles) {
+          if (o.type === 'pit') continue;
+          if (o.type === 'bat') {   // 飛ばなければ当たらない高さ
+            const bx = o.x + Math.sin(camX / 40 + o.ph) * 6;
+            const by = GROUND - 52;
+            if (hx + 10 > bx && hx + 2 < bx + o.w && heroY + 16 > by && heroY < by + 14) { die(); break; }
+            continue;
+          }
+          const oy = o.type === 'slime' ? GROUND - 10 + Math.sin(camX / 30 + o.ph) * 2 : GROUND - 10;
+          if (hx + 10 > o.x && hx + 2 < o.x + o.w && heroY + 16 > oy) { die(); break; }
+        }
+        if (!dead) for (const g of gears) {
+          if (g.dead || g.x === undefined) continue;
+          if (hx + 10 > g.x && hx + 2 < g.x + g.w && heroY + 16 > GROUND - 18) { die(); break; }
+        }
+      }
+      // 道中歌詞
+      if (lyrIdx < LYRMS.length && camX / 10 >= LYRMS[lyrIdx].m) showCap(LYRMS[lyrIdx++].x);
+      for (const c of coinsArr) {
+        if (!c.got && Math.abs(c.x - (hx + 6)) < 9 && Math.abs(c.y - (heroY + 8)) < 12) {
+          c.got = true; coins++; seCoin();
+        }
+      }
+      if (camX + 60 >= GOAL) { clearGame(); return; }
+    }
+    draw();
+    $('dist').textContent = Math.floor(camX / 10) + ' m / 2400 m';
+    $('coins').textContent = 'COIN ×' + coins;
+    $('conts').textContent = 'CONTINUE ×' + conts;
+    if (!dead) requestAnimationFrame(loop);   // 死亡中は止める（CONTINUEで再開＝二重ループ防止）
+  }
+
+  function draw() {
+    ctx.fillStyle = '#05060e'; ctx.fillRect(0, 0, W, H);
+    // 背景パララックス（500mごとに切替）
+    const bi = Math.min(BGS.length - 1, Math.floor(camX / 5000));
+    const img = bgImgs[BGS[bi]];
+    if (img) {
+      const off = (camX * .18) % W;
+      ctx.globalAlpha = .5;
+      ctx.drawImage(img, -off, 0, W, H); ctx.drawImage(img, W - off, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+    // 地面
+    ctx.fillStyle = '#101a38';
+    let gx = 0;
+    while (gx < W) {
+      const wx = camX + gx;
+      const pit = obstacles.find(o => o.type === 'pit' && wx > o.x && wx < o.x + o.w);
+      if (!pit) ctx.fillRect(gx, GROUND, 1, H - GROUND);
+      gx++;
+    }
+    ctx.fillStyle = '#2c4a8a';
+    gx = 0;
+    while (gx < W) {
+      const wx = camX + gx;
+      if (!obstacles.find(o => o.type === 'pit' && wx > o.x && wx < o.x + o.w)) ctx.fillRect(gx, GROUND, 1, 2);
+      gx++;
+    }
+    // 障害物・コイン
+    for (const o of obstacles) {
+      const sx = o.x - camX;
+      if (sx < -60 || sx > W + 60) continue;
+      if (o.type === 'spike') {
+        ctx.fillStyle = '#ff5a76';
+        for (let i = 0; i < 2; i++) {
+          ctx.beginPath();
+          ctx.moveTo(sx + i * 7, GROUND); ctx.lineTo(sx + i * 7 + 3.5, GROUND - 10); ctx.lineTo(sx + i * 7 + 7, GROUND);
+          ctx.fill();
+        }
+      } else if (o.type === 'slime') {
+        const oy = GROUND - 10 + Math.sin(camX / 30 + o.ph) * 2;
+        ctx.fillStyle = '#c05af0';
+        ctx.fillRect(sx, oy, 14, 10);
+        ctx.fillStyle = '#fff'; ctx.fillRect(sx + 2, oy + 3, 3, 3); ctx.fillRect(sx + 9, oy + 3, 3, 3);
+        ctx.fillStyle = '#0a1130'; ctx.fillRect(sx + 3, oy + 4, 1, 1); ctx.fillRect(sx + 10, oy + 4, 1, 1);
+      } else if (o.type === 'bat') {   // 飛ぶと当たる高さを羽ばたく
+        const bx = sx + Math.sin(camX / 40 + o.ph) * 6, by = GROUND - 52;
+        const wing = Math.sin(camX / 12 + o.ph) > 0;
+        ctx.fillStyle = '#8ab0ff';
+        ctx.fillRect(bx + 4, by + 4, 8, 7);
+        ctx.fillRect(bx + (wing ? -2 : 0), by + (wing ? 0 : 6), 6, 4);
+        ctx.fillRect(bx + (wing ? 12 : 10), by + (wing ? 0 : 6), 6, 4);
+        ctx.fillStyle = '#ff5a76'; ctx.fillRect(bx + 6, by + 6, 2, 2); ctx.fillRect(bx + 9, by + 6, 2, 2);
+      }
+    }
+    // 歯車
+    ctx.fillStyle = '#ffb84a';
+    for (const g of gears) {
+      if (g.dead || g.x === undefined) continue;
+      const sx = g.x - camX;
+      if (sx < -30 || sx > W + 30) continue;
+      const cx2 = sx + 9, cy2 = GROUND - 9, rot = camX / 9;
+      ctx.beginPath(); ctx.arc(cx2, cy2, 8, 0, Math.PI * 2); ctx.fill();
+      for (let k = 0; k < 6; k++) {
+        const a = rot + k * Math.PI / 3;
+        ctx.fillRect(cx2 + Math.cos(a) * 9 - 1.5, cy2 + Math.sin(a) * 9 - 1.5, 3, 3);
+      }
+      ctx.fillStyle = '#0a1130'; ctx.beginPath(); ctx.arc(cx2, cy2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffb84a';
+    }
+    ctx.fillStyle = '#ffd76a';
+    for (const c of coinsArr) {
+      const sx = c.x - camX;
+      if (c.got || sx < -10 || sx > W + 10) continue;
+      ctx.beginPath(); ctx.arc(sx, c.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+    // ゴールクリスタル
+    const gsx = GOAL - camX + 40;
+    if (gsx < W + 40) {
+      const g = ctx.createLinearGradient(gsx, 60, gsx, GROUND);
+      g.addColorStop(0, '#bffcff'); g.addColorStop(1, '#3fb8d8');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(gsx, 55); ctx.lineTo(gsx + 16, 85); ctx.lineTo(gsx + 10, GROUND);
+      ctx.lineTo(gsx - 10, GROUND); ctx.lineTo(gsx - 16, 85);
+      ctx.closePath(); ctx.fill();
+    }
+    // 主人公（無敵中は点滅）
+    if (!dead && (performance.now() > invulnUntil || Math.floor(performance.now() / 90) % 2)) {
+      const fr = !onGround ? 'jump' : (Math.floor(camX / 14) % 2 ? 'run1' : 'run2');
+      drawHero(60, Math.min(heroY, H), fr);
+    }
+  }
+
+  // ---------- GAME OVER → CONTINUE ----------
+  let cdTimer = null;
+  function die() {
+    if (dead) return;
+    dead = true; seDie();
+    bgm.pause();
+    setTimeout(() => {
+      $('gover').style.display = 'flex';
+      let n = 9;
+      $('cnum').textContent = n;
+      cdTimer = setInterval(() => {
+        n--;
+        if (n >= 0) { $('cnum').textContent = n; seTick(); }
+        else {   // 0になっても終わらない。問いだけが残る
+          clearInterval(cdTimer);
+          $('gover').querySelector('.cq').innerHTML = '── つづける？';
+        }
+      }, 1000);
+      if (PEEK !== null) setTimeout(() => $('coinbtn').click(), 1500);
+    }, 700);
+  }
+  let capTimer = null;
+  function showCap(s) {
+    const c = $('cap');
+    c.textContent = s; c.style.opacity = 1;
+    clearTimeout(capTimer);
+    capTimer = setTimeout(() => c.style.opacity = 0, 2600);
+  }
+
+  $('coinbtn').addEventListener('click', e => {
+    e.stopPropagation();
+    if (cdTimer) clearInterval(cdTimer);
+    conts++;
+    if (coins > 0) { coins--; showCap('コインを 1まい いれた（のこり ' + coins + '）'); }
+    else showCap('ツケで つづけた。だいじょうぶ、みんな そうしてる');
+    seCoin();
+    $('gover').style.display = 'none';
+    $('gover').querySelector('.cq').innerHTML = 'CONTINUE?　<span class="num" id="cnum">9</span>';
+    // つづきから: 死んだ地点の少し手前・無敵1.5s
+    camX = Math.max(0, camX - 90);
+    heroY = GROUND - 16; vy = 0; onGround = true; dead = false;
+    invulnUntil = performance.now() + 1500;
+    sePico();
+    bgm.play().catch(() => {});
+    lastT = performance.now();
+    requestAnimationFrame(loop);
+  });
+
+  // ---------- クリア → エンディング ----------
+  const LYRICS = [   // ending.mp3 = 原曲128.7s〜 / SRT実測−128.7s
+    { t: 0.20,  e: 2.55,  x: 'CONTINUE?　いま、ボタンを',       img: 'clear' },
+    { t: 2.58,  e: 5.61,  x: 'おせば　また はじまる おと',      img: 'clear' },
+    { t: 5.63,  e: 9.14,  x: 'ピコ ピコ ピコ　せかい が もどる', img: 'end1' },
+    { t: 9.17,  e: 12.24, x: 'ぼく は まだ　つづいてる',        img: 'end1' },
+    { t: 12.26, e: 15.18, x: 'なんかい でも　コンティニュー',    img: 'end2' },
+    { t: 15.20, e: 21.23, x: 'GAME OVER　じゃ おわらせない',    img: 'end2' },
+    { t: 21.26, e: 24.5,  x: '── つづける？',                  img: 'end2' },
+  ];
+  function clearGame() {
+    running = false; cleared = true;
+    bgm.pause();
+    const ov = $('ending'), ly = $('elyric'), bg = $('endbg');
+    ov.style.pointerEvents = 'auto'; ov.style.opacity = 1;
+    $('endstat').textContent = conts + ' かい つづけて、ここまで きた（COIN ×' + coins + '）';
+    endTrack.play().catch(() => {});
+    let li = -1;
+    const tick = () => {
+      const t = endTrack.currentTime;
+      const cur = LYRICS.findIndex(L => t >= L.t && t <= L.e);
+      if (cur !== li) {
+        if (cur === -1) ly.style.opacity = 0;
+        else {
+          ly.textContent = LYRICS[cur].x; ly.style.opacity = 1;
+          if (bg.src.indexOf(LYRICS[cur].img) === -1) bg.src = IMG(LYRICS[cur].img);
+        }
+        li = cur;
+      }
+      if (!endTrack.ended) requestAnimationFrame(tick);
+      else { ly.style.opacity = 0; setTimeout(() => $('endcard').style.display = 'flex', 1200); }
+    };
+    requestAnimationFrame(tick);
+    $('again').addEventListener('click', () => location.reload());
+  }
+
+  // ---------- PEEK: 自動ジャンプAI ----------
+  function autoPlay() {
+    setInterval(() => {
+      if (!running || dead) return;
+      const hx = camX + 60;
+      const near = obstacles.find(o => o.type !== 'bat' && o.x > hx && o.x - hx < (speed * .42));
+      const gnear = gears.find(g => !g.dead && g.x !== undefined && g.x > hx && g.x - hx < (speed + 62) * .34);
+      if ((near || gnear) && onGround) jump();
+      else if (!onGround && !airJumped && vy > 0 && heroY > GROUND - 30 &&
+               obstacles.some(o => o.type === 'pit' && hx + 10 > o.x && hx + 2 < o.x + o.w)) jump();  // 広い穴は二段
+    }, 50);
+  }
+
+  // ---------- 起動 ----------
+  const toLoad = ['title', 'clear', 'end1', 'end2'].concat(BGS);
+  let loaded = 0;
+  const startBtn = $('start');
+  toLoad.forEach(n => { const im = new Image(); im.onload = im.onerror = () => {
+    bgImgs[n] = im;
+    loaded++;
+    startBtn.textContent = loaded >= toLoad.length ? 'PUSH START' : `LOADING… ${Math.round(loaded/toLoad.length*100)}%`;
+    if (loaded >= toLoad.length) { startBtn.disabled = false; if (PEEK !== null) startBtn.click(); }
+  }; im.src = IMG(n); });
+
+  startBtn.addEventListener('click', () => {
+    $('title').style.opacity = 0;
+    setTimeout(() => $('title').style.display = 'none', 1200);
+    bgm.play().catch(() => {});
+    if (PEEK === 'ending') { clearGame(); return; }
+    if (PEEK === 'clear') camX = GOAL - 900;
+    running = true; lastT = performance.now();
+    requestAnimationFrame(loop);
+    if (PEEK === 'play' || PEEK === 'clear') autoPlay();
+    if (PEEK === 'over') setTimeout(() => die(), 1200);
+  });
+})();
+</script>
+</body>
+</html>

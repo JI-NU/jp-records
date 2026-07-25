@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>一筆の五月雨 | JP RECORDS</title>
+<meta name="description" content="JP「五月雨」の世界。筆を一本だけわたします。引いた線は消せません。同じ線は、二度と引けません。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#e9e5da; touch-action:none; }
+  body { font-family:"Yu Mincho","Hiragino Mincho ProN","Noto Serif JP",serif; color:#2b2b33;
+         display:flex; align-items:center; justify-content:center; }
+
+  #stage { position:relative; aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9));
+           background:#e9e5da; overflow:hidden; cursor:crosshair; }
+  #scene { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; transition:opacity 1.1s ease; }
+  #guide { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  #ink { position:absolute; inset:0; width:100%; height:100%; }
+  #paper { position:absolute; inset:0; pointer-events:none; opacity:.5;
+           background:radial-gradient(ellipse at center, transparent 55%, rgba(90,84,70,.18) 100%); }
+
+  #mono { position:absolute; left:6%; right:6%; bottom:8%; display:flex; flex-direction:column; gap:.5em; pointer-events:none; }
+  .mline { font-size:clamp(15px,2.7vh,25px); letter-spacing:.15em; line-height:1.9; color:#26262e;
+           text-shadow:0 0 12px rgba(233,229,218,.95), 0 0 26px rgba(233,229,218,.9);
+           opacity:0; transform:translateY(8px); transition:opacity .9s ease, transform .9s ease; }
+  .mline.on { opacity:1; transform:none; }
+  #adv { position:absolute; right:4%; bottom:4%; color:rgba(43,43,51,.6); font-size:clamp(12px,1.8vh,15px);
+         animation:blink 1.6s infinite; pointer-events:none; opacity:0; transition:opacity .5s; }
+  @keyframes blink { 50% { opacity:.15; } }
+
+  #odai { position:absolute; left:50%; top:6.5%; transform:translateX(-50%); opacity:0; transition:opacity .8s ease;
+          font-size:clamp(16px,3vh,28px); letter-spacing:.3em; white-space:nowrap; color:#1d1d26;
+          background:rgba(238,234,222,.82); border-top:1px solid rgba(43,43,51,.35); border-bottom:1px solid rgba(43,43,51,.35);
+          padding:.42em 1.4em; pointer-events:none; }
+  #odai.on { opacity:1; }
+  #odai small { display:block; font-size:.58em; letter-spacing:.22em; color:rgba(29,29,38,.7); margin-top:.3em; }
+
+  #dot { position:absolute; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%;
+         background:#b23a2f; box-shadow:0 0 0 0 rgba(178,58,47,.5); pointer-events:none; opacity:0; transition:opacity .6s; }
+  #dot.on { opacity:.92; animation:pulse 1.8s infinite; }
+  @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(178,58,47,.45); } 70% { box-shadow:0 0 0 16px rgba(178,58,47,0); } 100% { box-shadow:0 0 0 0 rgba(178,58,47,0); } }
+
+  #ui { position:absolute; left:0; right:0; bottom:6%; display:none; flex-direction:column; align-items:center; gap:1.8vh; }
+  #ui.on { display:flex; }
+  .cbtn { font-family:inherit; font-size:clamp(15px,2.5vh,23px); letter-spacing:.3em; text-indent:.3em; color:#26262e;
+          background:rgba(238,234,222,.85); border:1px solid rgba(43,43,51,.5); border-radius:1px;
+          padding:.6em 2em; cursor:pointer; transition:all .3s; }
+  .cbtn:hover { background:rgba(43,43,51,.08); box-shadow:0 2px 14px rgba(43,43,51,.2); }
+
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:3vh; text-align:center; z-index:10; }
+  #title { background:rgba(233,229,218,.4); transition:opacity 1.6s; }
+  #title .bg { position:absolute; inset:0; z-index:-1; }
+  #title .bg img { width:100%; height:100%; object-fit:cover; filter:brightness(1.04); }
+  #title h1 { font-size:clamp(38px,8.5vh,84px); font-weight:500; letter-spacing:.34em; text-indent:.34em; color:#1d1d26;
+              text-shadow:0 0 18px rgba(233,229,218,.9), 0 0 40px rgba(233,229,218,.8); }
+  #title .sub { font-size:clamp(13px,2.1vh,18px); letter-spacing:.44em; text-indent:.44em; color:rgba(29,29,38,.85); }
+  #start { margin-top:3.5vh; font-family:inherit; font-size:clamp(16px,2.5vh,23px); letter-spacing:.4em; text-indent:.4em;
+           color:#1d1d26; background:rgba(238,234,222,.7); border:1px solid rgba(29,29,38,.55); border-radius:1px;
+           padding:.85em 2.4em; cursor:pointer; transition:all .4s; }
+  #start:disabled { opacity:.35; cursor:default; }
+  #start:not(:disabled):hover { background:rgba(29,29,38,.08); box-shadow:0 2px 18px rgba(29,29,38,.25); }
+  #title .credit { position:absolute; bottom:3vh; font-size:12px; letter-spacing:.2em; color:rgba(29,29,38,.5); }
+
+  #ending { background:#dcd8cc; opacity:0; pointer-events:none; transition:opacity 2.5s ease; z-index:20; }
+  #ending .bg { position:absolute; inset:0; }
+  #ending .bg img { width:100%; height:100%; object-fit:cover; transition:opacity 1.4s ease; }
+  #elyric { position:relative; font-size:clamp(20px,3.6vh,34px); letter-spacing:.2em; line-height:2; color:#1d1d26;
+            text-shadow:0 0 14px rgba(220,216,204,.95), 0 2px 26px rgba(220,216,204,.9);
+            opacity:0; transition:opacity 1s ease; }
+  #endcard { position:relative; display:none; flex-direction:column; align-items:center; gap:4vh; }
+  #endcard .fin { font-size:clamp(22px,4vh,38px); letter-spacing:.5em; text-indent:.5em; color:#1d1d26; }
+  #again { font-family:inherit; font-size:clamp(13px,2vh,16px); letter-spacing:.3em; text-indent:.3em;
+           color:rgba(29,29,38,.75); background:transparent; border:none; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img id="scene" src="assets/img/title.jpg" alt="">
+  <canvas id="guide" width="1280" height="720"></canvas>
+  <canvas id="ink" width="1280" height="720"></canvas>
+  <div id="paper"></div>
+  <div id="dot"></div>
+  <div id="odai"></div>
+  <div id="mono"></div>
+  <div id="adv">▼</div>
+  <div id="ui"></div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="bg"><img src="assets/img/title.jpg" alt=""></div>
+  <h1>一筆の五月雨</h1>
+  <div class="sub">— ひいた せんは けせません —</div>
+  <button id="start" disabled>よみこみちゅう…</button>
+  <div class="credit">JP — AI MUSIC #115「五月雨」</div>
+</div>
+
+<div class="overlay" id="ending">
+  <div class="bg"><img id="endbg" src="assets/img/end1.jpg" alt=""></div>
+  <div id="elyric"></div>
+  <div id="endcard">
+    <div class="fin">またの雨で</div>
+    <button id="again">— もういちど ひく —</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), scene = $('scene'), cv = $('ink'), ctx = cv.getContext('2d'),
+        gcv = $('guide'), gctx = gcv.getContext('2d'),
+        mono = $('mono'), adv = $('adv'), odai = $('odai'), dot = $('dot'), ui = $('ui');
+  const IMG = n => `assets/img/${n}.jpg`;
+  const PEEK = new URLSearchParams(location.search).get('peek');
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const W = 1280, H = 720;
+
+  const bgm = new Audio('assets/audio/bgm_loop.mp3'); bgm.loop = true; bgm.volume = .6;
+  const endTrack = new Audio('assets/audio/ending.mp3');
+
+  // ---------- 独白 ----------
+  let monoQueue = [], monoShown = 0, onMonoDone = null;
+  function showMono(lines, done) {
+    mono.innerHTML = ''; monoQueue = lines; monoShown = 0; onMonoDone = done;
+    adv.style.opacity = 1;
+    advance();
+  }
+  function advance() {
+    if (monoShown >= monoQueue.length) return;
+    const d = document.createElement('div');
+    d.className = 'mline'; d.textContent = monoQueue[monoShown];
+    mono.appendChild(d);
+    setTimeout(() => d.classList.add('on'), 40);
+    monoShown++;
+    if (monoShown === monoQueue.length) setTimeout(() => { adv.style.opacity = 0; onMonoDone && onMonoDone(); }, 700);
+    else if (PEEK !== null) setTimeout(advance, 350);
+  }
+  stage.addEventListener('click', () => { if (monoShown < monoQueue.length) advance(); });
+  const clearMono = () => { mono.innerHTML = ''; monoQueue = []; };
+
+  function fadeScene(src, cb) {
+    scene.style.opacity = 0;
+    setTimeout(() => { scene.src = src; scene.onload = () => { scene.style.opacity = 1; cb && cb(); }; }, 900);
+  }
+
+  // ---------- 「雨」の五画（グリフ座標 0..1・y下向き） ----------
+  const densify = (pts, n) => {   // 折れ線を n 点に補間
+    const out = [];
+    let total = 0;
+    const seg = [];
+    for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]); seg.push(d); total += d; }
+    for (let k = 0; k < n; k++) {
+      let t = k / (n - 1) * total, i = 0;
+      while (i < seg.length - 1 && t > seg[i]) { t -= seg[i]; i++; }
+      const r = seg[i] ? t / seg[i] : 0;
+      out.push({ x: pts[i][0] + (pts[i+1][0]-pts[i][0]) * r, y: pts[i][1] + (pts[i+1][1]-pts[i][1]) * r });
+    }
+    return out;
+  };
+  const GLYPH = [
+    densify([[0.12,0.10],[0.50,0.065],[0.88,0.10]], 60),                                        // 一（上の横画）
+    densify([[0.205,0.24],[0.185,0.55],[0.205,0.86]], 60),                                      // 左のたて画
+    densify([[0.205,0.24],[0.50,0.215],[0.795,0.24],[0.81,0.55],[0.795,0.82],[0.71,0.78]], 80), // 冂（横→右たて→はね）
+    densify([[0.50,0.10],[0.50,0.84]], 50),                                                     // 中央のたて画
+    densify([[0.30,0.42],[0.38,0.55],[0.44,0.45],[0.54,0.58],[0.61,0.44],[0.69,0.57]], 70),     // 雨だれ（連綿の点々）
+  ];
+
+  // ---------- 場面（place: グリフ画→場面への配置 {cx,cy,scale,rot}） ----------
+  const SCENES = [
+    { img:'sc1', glyph:0, place:{ cx:.48*W, cy:.56*H, scale:680, rot:-0.20 }, fade:null,
+      intro:['あめの こうさてん　かさの すきまに　めが あった'],
+      odai:'その ひとの かさまで、いっぴつ',
+      after:['なまえも しらない。それでも せんは　ひかれてしまった'] },
+    { img:'sc2', glyph:2, place:{ cx:.52*W, cy:.40*H, scale:470, rot:0.05 }, fade:null,
+      intro:['ひとつの かさを　わけあった ごご'],
+      odai:'ふたりの うえに　かさを いっぴつ',
+      after:['こんな じかんが　つづくと おもっていた'] },
+    { img:'sc3', glyph:4, place:{ cx:.50*W, cy:.38*H, scale:820, rot:0.12 }, fade:null,
+      intro:['きせつが うつって　あめは つよく'],
+      odai:'つよくなる あまあしを　いっぴつ',
+      after:['いえない ことばが　ぬれたまま かわく'] },
+    { img:'sc4', glyph:3, place:{ cx:.47*W, cy:.49*H, scale:580, rot:-1.94 }, fade:{ x:.64, y:.40 },
+      intro:['てを ふる きみが　ひとの ながれに のまれていく'],
+      odai:'とおざかる きみへ　いっぴつ',
+      after:['とどかない。……とどかないことも、ちゃんと おぼえておく'] },
+    { img:'sc5', glyph:1, place:{ cx:.50*W, cy:.62*H, scale:640, rot:-1.55 }, fade:null,
+      intro:['あめは いつか あがる。あがっては、また ふりだす'],
+      odai:'つぎの こうさてんへ　いっぴつ',
+      after:['かさを にぎりなおして、わたる'] },
+  ];
+  const strokes = [];   // 各場面の {x,y,r}（場面座標・正規化）
+
+  const placePt = (p, pl) => {   // グリフ座標 → 場面座標(px)
+    const dx = (p.x - .5) * pl.scale, dy = (p.y - .5) * pl.scale;
+    return { x: pl.cx + dx * Math.cos(pl.rot) - dy * Math.sin(pl.rot),
+             y: pl.cy + dx * Math.sin(pl.rot) + dy * Math.cos(pl.rot) };
+  };
+  const unplacePt = (x, y, pl) => {   // 場面座標(px) → グリフ座標
+    const dx = x - pl.cx, dy = y - pl.cy;
+    const gx = dx * Math.cos(-pl.rot) - dy * Math.sin(-pl.rot);
+    const gy = dx * Math.sin(-pl.rot) + dy * Math.cos(-pl.rot);
+    return { x: gx / pl.scale + .5, y: gy / pl.scale + .5 };
+  };
+
+  // ---------- 道しるべ（破線ガイド＋お手本の筆） ----------
+  function guidePath(sc) { return GLYPH[sc.glyph].map(p => placePt(p, sc.place)); }
+  function drawGuide(sc) {
+    const pts = guidePath(sc);
+    gctx.clearRect(0, 0, W, H);
+    gctx.save();
+    gctx.strokeStyle = 'rgba(60,60,74,.42)';
+    gctx.lineWidth = 3; gctx.setLineDash([10, 12]); gctx.lineCap = 'round';
+    gctx.beginPath();
+    pts.forEach((p, i) => i === 0 ? gctx.moveTo(p.x, p.y) : gctx.lineTo(p.x, p.y));
+    gctx.stroke();
+    gctx.restore();
+    // 終点の小さな輪
+    const e = pts[pts.length - 1];
+    gctx.strokeStyle = 'rgba(60,60,74,.5)'; gctx.lineWidth = 2;
+    gctx.beginPath(); gctx.arc(e.x, e.y, 9, 0, Math.PI * 2); gctx.stroke();
+    return pts;
+  }
+  function ghostDemo(sc) {   // お手本の筆がひとりでに一度なぞる（見せて教える）
+    return new Promise(res => {
+      const pts = guidePath(sc);
+      const t0 = performance.now(), dur = 1400;
+      const step = () => {
+        const prog = Math.min(1, (performance.now() - t0) / dur);
+        drawGuide(sc);
+        const upto = Math.max(1, Math.floor(prog * (pts.length - 1)));
+        gctx.save();
+        gctx.strokeStyle = 'rgba(43,43,51,.35)'; gctx.lineWidth = 9; gctx.lineCap = 'round'; gctx.lineJoin = 'round';
+        gctx.beginPath();
+        for (let i = 0; i <= upto; i++) i === 0 ? gctx.moveTo(pts[i].x, pts[i].y) : gctx.lineTo(pts[i].x, pts[i].y);
+        gctx.stroke();
+        // 筆先
+        const tip = pts[upto];
+        gctx.fillStyle = 'rgba(43,43,51,.55)';
+        gctx.beginPath(); gctx.arc(tip.x, tip.y, 7, 0, Math.PI * 2); gctx.fill();
+        gctx.restore();
+        if (prog < 1) requestAnimationFrame(step);
+        else setTimeout(() => { drawGuide(sc); res(); }, 350);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  // ---------- 墨の筆（速度で幅・にじみ・かすれ） ----------
+  const INK = '#16161e';
+  let drawing = false, last = null, lastR = 8, bleedTimer = null, strokePts = [];
+  let inkAllowed = false, fadeTarget = null;
+  let onStrokeEnd = null;
+
+  function inkAlphaAt(x, y) {
+    if (!fadeTarget) return 1;
+    const d = Math.hypot(x - fadeTarget.x * W, y - fadeTarget.y * H);
+    return Math.max(0, Math.min(1, (d - 55) / 190));
+  }
+  function stamp(x, y, r, a) {
+    if (a <= 0.003) return;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = INK;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  function inkSegment(x0, y0, x1, y1, v) {
+    const wBase = Math.max(2.6, Math.min(15, 13.5 - v * 11));
+    const kasure = v > 0.85;
+    const d = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(1, Math.round(d / 1.6));
+    for (let i = 0; i <= steps; i++) {
+      const x = x0 + (x1 - x0) * i / steps, y = y0 + (y1 - y0) * i / steps;
+      const fade = inkAlphaAt(x, y);
+      if (kasure) {
+        if (Math.random() < .55) stamp(x + (Math.random() - .5) * 3, y + (Math.random() - .5) * 3, wBase * .5, .22 * fade);
+      } else {
+        stamp(x, y, wBase / 2, .34 * fade);
+      }
+    }
+    lastR = wBase / 2;
+  }
+  function startBleed() {
+    stopBleed();
+    bleedTimer = setInterval(() => {
+      if (!last) return;
+      lastR = Math.min(lastR + 1.1, 26);
+      stamp(last.x, last.y, lastR, .045 * inkAlphaAt(last.x, last.y));
+    }, 90);
+  }
+  const stopBleed = () => { if (bleedTimer) { clearInterval(bleedTimer); bleedTimer = null; } };
+
+  function toXY(e) {
+    const r = stage.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H, t: performance.now() };
+  }
+  stage.addEventListener('pointerdown', e => {
+    if (!inkAllowed) return;
+    drawing = true; last = toXY(e); strokePts = [{ x: last.x / W, y: last.y / H, r: 7 }];
+    dot.classList.remove('on');
+    stamp(last.x, last.y, 7, .3 * inkAlphaAt(last.x, last.y));
+    startBleed();
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    const p = toXY(e);
+    const dt = Math.max(1, p.t - last.t), v = Math.hypot(p.x - last.x, p.y - last.y) / dt;
+    if (Math.hypot(p.x - last.x, p.y - last.y) > 1.2) {
+      inkSegment(last.x, last.y, p.x, p.y, v);
+      strokePts.push({ x: p.x / W, y: p.y / H, r: lastR });
+      last = p;
+    }
+  });
+  const endStroke = () => {
+    if (!drawing) return;
+    drawing = false; stopBleed(); inkAllowed = false;
+    gctx.clearRect(0, 0, W, H);                    // 道しるべを消す
+    const done = onStrokeEnd; onStrokeEnd = null;
+    done && done(strokePts.slice());
+  };
+  stage.addEventListener('pointerup', endStroke);
+  stage.addEventListener('pointerleave', endStroke);
+
+  // ---------- 場面進行 ----------
+  function playScene(i) {
+    if (i >= SCENES.length) { finale(); return; }
+    const sc = SCENES[i];
+    clearMono(); odai.classList.remove('on'); dot.classList.remove('on');
+    fadeScene(IMG(sc.img), async () => {
+      ctx.clearRect(0, 0, W, H);
+      showMono(sc.intro, async () => {
+        await wait(300);
+        odai.innerHTML = sc.odai + '<small>うすい みちを なぞるように</small>';
+        odai.classList.add('on');
+        await ghostDemo(sc);                        // お手本を一度見せてから
+        const sp = guidePath(sc)[0];
+        dot.style.left = (sp.x / W * 100) + '%'; dot.style.top = (sp.y / H * 100) + '%';
+        dot.classList.add('on');
+        fadeTarget = sc.fade; inkAllowed = true;
+        onStrokeEnd = pts => {
+          strokes[i] = pts;
+          odai.classList.remove('on');
+          setTimeout(() => showMono(sc.after, () => setTimeout(() => playScene(i + 1), 1200)), 700);
+        };
+        if (PEEK !== null) autoStroke(sc);
+      });
+    });
+  }
+
+  // ---------- 終幕: 五本の線が「雨」に集まる ----------
+  const FIN = { cx: .5 * W, cy: .47 * H, scale: 520 };   // 一文字の置き場
+  function strokeTargets(i) {   // 引いた線(場面座標) → 一文字の中の座標
+    const sc = SCENES[i];
+    return strokes[i].map(p => {
+      const g = unplacePt(p.x * W, p.y * H, sc.place);
+      return { x: FIN.cx + (g.x - .5) * FIN.scale, y: FIN.cy + (g.y - .5) * FIN.scale, r: p.r || 5 };
+    });
+  }
+  function drawStrokePath(pts, alpha) {   // 移動アニメ中は軽いパス描画
+    if (!pts || pts.length < 2) return;
+    ctx.save();
+    ctx.strokeStyle = INK; ctx.globalAlpha = alpha;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    let i = 1;
+    while (i < pts.length) {
+      const w = Math.max(3, (pts[i].r || 5) * 1.7);
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.moveTo(pts[i-1].x, pts[i-1].y);
+      let j = i;
+      while (j < pts.length && Math.abs(((pts[j].r || 5) * 1.7) - w) < 2.5) { ctx.lineTo(pts[j].x, pts[j].y); j++; }
+      ctx.stroke();
+      i = Math.max(j, i + 1);
+    }
+    ctx.restore();
+  }
+  function stampStroke(pts) {   // 定着は本来の墨レンダラ
+    for (let k = 1; k < pts.length; k++) {
+      const a = pts[k-1], b = pts[k], r = b.r || 5;
+      const d = Math.hypot(b.x - a.x, b.y - a.y), steps = Math.max(1, Math.round(d / 1.6));
+      for (let s = 0; s <= steps; s++)
+        stamp(a.x + (b.x - a.x) * s / steps, a.y + (b.y - a.y) * s / steps, r, .34);
+    }
+  }
+  async function finale() {
+    clearMono(); fadeTarget = null;
+    fadeScene(IMG('title'), async () => {
+      ctx.clearRect(0, 0, W, H);
+      // 1) 引いたままの五本を順に置く
+      showMono(['きみと ひいた 五本の せん'], () => {});
+      const raw = strokes.map(pts => (pts || []).map(p => ({ x: p.x * W, y: p.y * H, r: p.r || 5 })));
+      for (let i = 0; i < raw.length; i++) { drawStrokePath(raw[i], .85); await wait(420); }
+      await wait(900);
+      clearMono();
+      showMono(['あつまって——'], () => {});
+      await wait(600);
+      // 2) 「雨」へすーっと集まる
+      const targets = strokes.map((s, i) => s ? strokeTargets(i) : null);
+      const t0 = performance.now(), dur = 1900;
+      await new Promise(res => {
+        const step = () => {
+          const prog = Math.min(1, (performance.now() - t0) / dur);
+          const e = prog < .5 ? 2 * prog * prog : 1 - Math.pow(-2 * prog + 2, 2) / 2;   // easeInOut
+          ctx.clearRect(0, 0, W, H);
+          for (let i = 0; i < raw.length; i++) {
+            if (!raw[i].length || !targets[i]) continue;
+            const mid = raw[i].map((p, k) => {
+              const q = targets[i][Math.min(k, targets[i].length - 1)];
+              return { x: p.x + (q.x - p.x) * e, y: p.y + (q.y - p.y) * e, r: p.r };
+            });
+            drawStrokePath(mid, .85);
+          }
+          if (prog < 1) requestAnimationFrame(step); else res();
+        };
+        requestAnimationFrame(step);
+      });
+      // 3) 定着（墨レンダラで焼き直し）
+      ctx.clearRect(0, 0, W, H);
+      targets.forEach(t => t && stampStroke(t));
+      await wait(400);
+      clearMono();
+      showMono(['——「雨」', 'きみの 線で かいた、一文字'], () => {
+        setTimeout(() => {
+          clearMono();
+          showMono(['おなじ せんは　にどと ひけない'], () => {
+            ui.innerHTML = ''; ui.classList.add('on');
+            const b = document.createElement('button'); b.className = 'cbtn'; b.textContent = '— あめの うたを きく —';
+            b.addEventListener('click', e => { e.stopPropagation(); ui.classList.remove('on'); startEnding(); });
+            ui.appendChild(b);
+            if (PEEK !== null) setTimeout(() => b.click(), 900);
+          });
+        }, 1900);
+      });
+    });
+  }
+
+  // ---------- エンディング（ending.mp3 = 原曲166.0s〜 / SRT実測−166.0s） ----------
+  const LYRICS = [
+    { t: 0.52,  e: 4.13,  x: '巡る季節は　同じ雨じゃない',       img: 'end1' },
+    { t: 4.16,  e: 8.37,  x: 'すれ違う傘に　また手を伸ばす',     img: 'end1' },
+    { t: 8.39,  e: 11.98, x: 'いつかどこかで　また濡れるため',   img: 'end2' },
+    { t: 12.01, e: 15.67, x: 'ぼくは今日も　交差点を渡る',       img: 'end2' },
+    { t: 15.70, e: 23.06, x: '降りしきる　五月雨の一粒を',       img: 'end3' },
+    { t: 23.08, e: 28.18, x: '忘れないように　心に集めて',       img: 'end3' },
+  ];
+  function startEnding() {
+    const f = setInterval(() => { bgm.volume = Math.max(0, bgm.volume - .05); if (bgm.volume <= 0) { bgm.pause(); clearInterval(f); } }, 100);
+    const ov = $('ending'), ly = $('elyric'), bg = $('endbg');
+    ov.style.pointerEvents = 'auto'; ov.style.opacity = 1;
+    endTrack.volume = 1; endTrack.play().catch(() => {});
+    let li = -1;
+    const tick = () => {
+      const t = endTrack.currentTime;
+      const cur = LYRICS.findIndex(L => t >= L.t && t <= L.e);
+      if (cur !== li) {
+        if (cur === -1) ly.style.opacity = 0;
+        else {
+          ly.textContent = LYRICS[cur].x; ly.style.opacity = 1;
+          if (bg.src.indexOf(LYRICS[cur].img) === -1) bg.src = IMG(LYRICS[cur].img);
+        }
+        li = cur;
+      }
+      if (!endTrack.ended) requestAnimationFrame(tick);
+      else { ly.style.opacity = 0; setTimeout(() => $('endcard').style.display = 'flex', 1500); }
+    };
+    requestAnimationFrame(tick);
+    $('again').addEventListener('click', () => location.reload());
+  }
+
+  // ---------- PEEK用オートストローク（道しるべをなぞる） ----------
+  function autoStroke(sc) {
+    const pts = guidePath(sc).map(p => ({ x: p.x + (Math.random() - .5) * 10, y: p.y + (Math.random() - .5) * 10 }));
+    let i = 0;
+    drawing = true; last = { ...pts[0], t: performance.now() };
+    strokePts = [{ x: pts[0].x / W, y: pts[0].y / H, r: 7 }];
+    fadeTarget = sc.fade; stamp(last.x, last.y, 7, .3 * inkAlphaAt(last.x, last.y));
+    const iv = setInterval(() => {
+      i++;
+      if (i >= pts.length) { clearInterval(iv); endStroke(); return; }
+      const p = { ...pts[i], t: performance.now() };
+      inkSegment(last.x, last.y, p.x, p.y, .3);
+      strokePts.push({ x: p.x / W, y: p.y / H, r: lastR });
+      last = p;
+    }, 22);
+  }
+
+  // ---------- 起動 ----------
+  const toLoad = ['title','sc1','sc2','sc3','sc4','sc5','end1','end2','end3'];
+  let loaded = 0;
+  const startBtn = $('start');
+  toLoad.forEach(n => { const im = new Image(); im.onload = im.onerror = () => {
+    loaded++;
+    startBtn.textContent = loaded >= toLoad.length ? '— ふでを とる —' : `よみこみちゅう… ${Math.round(loaded/toLoad.length*100)}%`;
+    if (loaded >= toLoad.length) { startBtn.disabled = false; if (PEEK !== null) startBtn.click(); }
+  }; im.src = IMG(n); });
+
+  startBtn.addEventListener('click', () => {
+    $('title').style.opacity = 0;
+    setTimeout(() => $('title').style.display = 'none', 1500);
+    bgm.play().catch(() => {});
+    if (PEEK === 'ending') { startEnding(); return; }
+    if (PEEK === 'finale') {   // 検証用: ガイド通りの筆跡で即終幕
+      SCENES.forEach((sc, i) => {
+        strokes[i] = guidePath(sc).map(p => ({
+          x: (p.x + (Math.random() - .5) * 9) / W,
+          y: (p.y + (Math.random() - .5) * 9) / H,
+          r: 4.5 + Math.random() * 2.5 }));
+      });
+      finale();
+      return;
+    }
+    showMono(['ふでを 一本だけ　わたします',
+              'それぞれの あめの けしきに、うすい みちしるべが うかびます',
+              'なぞっても、はみだしても いい。ただし——ひいた せんは、けせません'],
+      () => setTimeout(() => playScene(0), 700));
+  });
+})();
+</script>
+</body>
+</html>

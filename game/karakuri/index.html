@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>からくりくられ — 操りからくり座 | JP RECORDS</title>
+<meta name="description" content="JP「からくりくられ」の世界。糸を引けば人形が芸をする、ぜんまい仕掛けの操り一座。——その糸、どちらから垂れているか、確かめなすったか。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#150e08; touch-action:manipulation; }
+  body { font-family:"Yu Mincho","Hiragino Mincho ProN","Noto Serif JP",serif; color:#f3e6c8;
+         display:flex; align-items:center; justify-content:center; }
+
+  #stage { position:relative; aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9));
+           background:#150e08; overflow:hidden; }
+  #view { position:absolute; inset:0; transition:transform 1.2s cubic-bezier(.4,0,.4,1); }
+  #scene { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; transition:opacity .7s ease; }
+  #card { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; opacity:0;
+          transition:opacity .28s ease, transform .28s ease; transform:translateX(2.5%); }
+  #card.on { opacity:1; transform:none; }
+  #scrim { position:absolute; inset:0; pointer-events:none;
+           background:linear-gradient(to top, rgba(18,11,5,.88) 0%, rgba(18,11,5,.4) 18%, transparent 38%),
+                      radial-gradient(ellipse at center, transparent 55%, rgba(18,11,5,.45) 100%); }
+  #dim { position:absolute; inset:0; pointer-events:none; background:#0d0803; opacity:0; transition:opacity 3s ease; }
+
+  #mono { position:absolute; left:6%; right:6%; bottom:26%; display:flex; flex-direction:column; gap:.55em; pointer-events:none; }
+  .mline { font-size:clamp(15px,2.7vh,25px); letter-spacing:.13em; line-height:1.9;
+           color:#f6ecd4; text-shadow:0 0 10px rgba(18,11,5,.95), 0 1px 16px rgba(18,11,5,.9);
+           opacity:0; transform:translateY(8px); transition:opacity .8s ease, transform .8s ease; }
+  .mline.on { opacity:1; transform:none; }
+  #adv { position:absolute; right:4%; bottom:22%; color:rgba(243,230,200,.7); font-size:clamp(12px,1.8vh,15px);
+         animation:blink 1.6s infinite; pointer-events:none; opacity:0; transition:opacity .5s; }
+  @keyframes blink { 50% { opacity:.2; } }
+
+  /* 呼び（口上バナー） */
+  #call { position:absolute; left:50%; top:7%; transform:translateX(-50%) scale(.92); opacity:0;
+          font-size:clamp(17px,3.4vh,32px); letter-spacing:.2em; white-space:nowrap;
+          color:#1d1206; background:linear-gradient(#f0e2bd,#e2cfa0); border:2px solid #7a5a28; border-radius:3px;
+          padding:.35em 1.1em; box-shadow:0 4px 18px rgba(0,0,0,.6); transition:all .35s ease; }
+  #call.on { opacity:1; transform:translateX(-50%) scale(1); }
+
+  /* 糸と木札 */
+  #strings { position:absolute; inset:0; pointer-events:none; }
+  .str { position:absolute; bottom:0; width:12%; height:34%; pointer-events:auto; cursor:pointer;
+         display:flex; flex-direction:column; align-items:center; transition:transform .22s ease; }
+  .str .line { width:2px; flex:1; background:linear-gradient(rgba(243,230,200,.05), rgba(243,230,200,.75)); }
+  .str .tag { writing-mode:vertical-rl; font-size:clamp(14px,2.5vh,23px); letter-spacing:.28em; padding:.55em .28em;
+              color:#f3e6c8; background:linear-gradient(#5a3d1c,#3c2711); border:1px solid #8a6a34; border-radius:4px;
+              box-shadow:0 3px 10px rgba(0,0,0,.6); }
+  .str:hover .tag { background:linear-gradient(#6b4a22,#4a3015); }
+  .str.pull { transform:translateY(9%); }
+  #strings.flip .str { bottom:auto; top:0; flex-direction:column-reverse; cursor:default; }
+  #strings.flip .str .line { background:linear-gradient(rgba(243,230,200,.75), rgba(243,230,200,.05)); }
+  #strings.flip .str.pull { transform:translateY(-9%); }
+
+  #ui { position:absolute; left:0; right:0; bottom:5%; display:none; flex-direction:column; align-items:center; gap:1.8vh; }
+  #ui.on { display:flex; }
+  .cbtn { font-family:inherit; font-size:clamp(15px,2.5vh,23px); letter-spacing:.26em; text-indent:.26em; color:#f3e6c8;
+          background:rgba(40,24,10,.82); border:1px solid rgba(220,180,110,.55); border-radius:2px;
+          padding:.6em 1.9em; cursor:pointer; transition:all .3s; position:relative; }
+  .cbtn:hover { background:rgba(220,180,110,.18); box-shadow:0 0 18px rgba(230,170,80,.3); }
+  .cbtn.ghost { opacity:.75; }
+
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:3vh; text-align:center; z-index:10; }
+  #title { background:rgba(18,11,5,.5); transition:opacity 1.6s; }
+  #title .bg { position:absolute; inset:0; z-index:-1; }
+  #title .bg img { width:100%; height:100%; object-fit:cover; filter:brightness(.55) sepia(.25); }
+  #title h1 { font-size:clamp(40px,9vh,88px); font-weight:500; letter-spacing:.3em; text-indent:.3em;
+              text-shadow:0 0 26px rgba(230,150,60,.5), 0 2px 8px rgba(0,0,0,.8); }
+  #title .sub { font-size:clamp(13px,2.1vh,18px); letter-spacing:.4em; text-indent:.4em; color:rgba(243,230,200,.92); }
+  #start { margin-top:3.5vh; font-family:inherit; font-size:clamp(16px,2.5vh,23px); letter-spacing:.4em; text-indent:.4em;
+           color:#f3e6c8; background:transparent; border:1px solid rgba(230,190,120,.6); border-radius:2px;
+           padding:.85em 2.4em; cursor:pointer; transition:all .4s; }
+  #start:disabled { opacity:.35; cursor:default; }
+  #start:not(:disabled):hover { background:rgba(230,190,120,.14); box-shadow:0 0 24px rgba(230,150,60,.4); }
+  #title .credit { position:absolute; bottom:3vh; font-size:12px; letter-spacing:.2em; color:rgba(243,230,200,.55); }
+
+  #ending { background:#0d0803; opacity:0; pointer-events:none; transition:opacity 2.5s ease; z-index:20; }
+  #ending .bg { position:absolute; inset:0; }
+  #ending .bg img { width:100%; height:100%; object-fit:cover; transition:opacity 1.2s ease; }
+  #ending .bg::after { content:""; position:absolute; inset:0; background:radial-gradient(ellipse at center, transparent 45%, rgba(13,8,3,.6) 100%); }
+  #elyric { position:relative; font-size:clamp(20px,3.6vh,34px); letter-spacing:.18em; line-height:2;
+            color:#f6ecd4; text-shadow:0 0 14px rgba(13,8,3,.95), 0 2px 24px rgba(13,8,3,.9);
+            opacity:0; transition:opacity .9s ease; }
+  #endcard { position:relative; display:none; flex-direction:column; align-items:center; gap:4vh; }
+  #endcard .fin { font-size:clamp(22px,4vh,38px); letter-spacing:.5em; text-indent:.5em; }
+  #again { font-family:inherit; font-size:clamp(13px,2vh,16px); letter-spacing:.3em; text-indent:.3em;
+           color:rgba(243,230,200,.8); background:transparent; border:none; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="view">
+    <img id="scene" src="assets/img/barker.jpg" alt="">
+    <img id="card" src="" alt="">
+    <div id="scrim"></div>
+  </div>
+  <div id="dim"></div>
+  <div id="call"></div>
+  <div id="strings"></div>
+  <div id="mono"></div>
+  <div id="adv">▼</div>
+  <div id="ui"></div>
+</div>
+
+<div class="overlay" id="title">
+  <div class="bg"><img src="assets/img/title.jpg" alt=""></div>
+  <h1>からくりくられ</h1>
+  <div class="sub">— 操り からくり座 —</div>
+  <button id="start" disabled>よみこみちゅう…</button>
+  <div class="credit">JP — AI MUSIC #126「からくりくられ」</div>
+</div>
+
+<div class="overlay" id="ending">
+  <div class="bg"><img id="endbg" src="assets/img/end1.jpg" alt=""></div>
+  <div id="elyric"></div>
+  <div id="endcard">
+    <div class="fin">お開き</div>
+    <button id="again">— もう一巻き —</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const view = $('view'), scene = $('scene'), card = $('card'), mono = $('mono'), adv = $('adv'),
+        ui = $('ui'), call = $('call'), strings = $('strings'), dim = $('dim');
+  const IMG = n => `assets/img/${n}.jpg`;
+  const PEEK = new URLSearchParams(location.search).get('peek');
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  // ---------- 音 ----------
+  const bgm = new Audio('assets/audio/bgm_loop.mp3'); bgm.loop = true; bgm.volume = .55;
+  const endTrack = new Audio('assets/audio/ending.mp3');
+  let AC = null;
+  const ac = () => AC || (AC = new (window.AudioContext || window.webkitAudioContext)());
+  function tone(freq, dur, type, gain, when) { // 拍子木・鉦
+    try {
+      const t = ac().currentTime + (when || 0);
+      const o = ac().createOscillator(), g = ac().createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(ac().destination); o.start(t); o.stop(t + dur);
+    } catch (_) {}
+  }
+  const seClack = () => { tone(1750, .07, 'square', .12); tone(880, .05, 'square', .07, .005); };   // 拍子木
+  const seKane  = () => { tone(2350, .5, 'sine', .16); tone(3520, .3, 'sine', .06); };              // 鉦
+  const seMiss  = () => { tone(180, .3, 'triangle', .18); };
+  const seWind  = n => { for (let i = 0; i < n; i++) tone(950 + i * 90, .05, 'square', .09, i * .09); }; // ぜんまい
+
+  // ---------- 独白 ----------
+  let monoQueue = [], monoShown = 0, onMonoDone = null, busy = false;
+  function showMono(lines, done) {
+    mono.innerHTML = ''; monoQueue = lines; monoShown = 0; onMonoDone = done;
+    adv.style.opacity = 1;
+    advance();
+  }
+  function advance() {
+    if (monoShown >= monoQueue.length) return;
+    const d = document.createElement('div');
+    d.className = 'mline'; d.textContent = monoQueue[monoShown];
+    mono.appendChild(d);
+    setTimeout(() => d.classList.add('on'), 40);
+    monoShown++;
+    if (monoShown === monoQueue.length) setTimeout(() => { adv.style.opacity = 0; onMonoDone && onMonoDone(); }, 650);
+    else if (PEEK !== null) setTimeout(advance, 350);
+  }
+  $('stage').addEventListener('click', () => { if (!busy && monoShown < monoQueue.length) advance(); });
+  const clearMono = () => { mono.innerHTML = ''; monoQueue = []; };
+
+  function fadeScene(src, cb) {
+    scene.style.opacity = 0;
+    setTimeout(() => { scene.src = src; scene.onload = () => { scene.style.opacity = 1; cb && cb(); }; }, 750);
+  }
+  function showCall(text) {
+    call.textContent = text; call.classList.add('on'); seKane();
+  }
+  const hideCall = () => call.classList.remove('on');
+
+  // ---------- 所作 ----------
+  const POSES = { ojigi:'おじぎ', kururi:'くるり', banzai:'ばんざい', pachi:'ぱち' };
+  const ORDER = ['ojigi', 'kururi', 'banzai', 'pachi'];
+  let mapping = {};           // 糸key -> 所作key
+  ORDER.forEach(k => mapping[k] = k);
+  let onPull = null;
+
+  function buildStrings() {
+    strings.innerHTML = '';
+    ORDER.forEach((k, i) => {
+      const s = document.createElement('div');
+      s.className = 'str'; s.dataset.key = k;
+      s.style.left = (16 + i * 18) + '%';
+      s.innerHTML = `<div class="line"></div><div class="tag">${POSES[k]}</div>`;
+      s.addEventListener('click', e => {
+        e.stopPropagation();
+        if (busy || !onPull || strings.classList.contains('flip')) return;
+        s.classList.add('pull'); setTimeout(() => s.classList.remove('pull'), 260);
+        onPull(k);
+      });
+      strings.appendChild(s);
+    });
+  }
+  function performPose(pose, cb) {  // 紙芝居カード差し替えで芸を見せる
+    busy = true; seClack();
+    card.src = IMG(pose);
+    card.onload = () => {
+      card.classList.add('on');
+      setTimeout(() => { card.classList.remove('on');
+        setTimeout(() => { busy = false; cb && cb(); }, 320); }, 1050);
+    };
+  }
+  // ---------- 節（呼び→順に引く） ----------
+  function playRound(calls, opt, done) {
+    let idx = 0;
+    const callText = () => showCall((opt.prefix || '——') + calls.map(p => POSES[p]).join('、') + (opt.suffix || 'を 一丁！'));
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+    function handle(k) {
+      onPull = null; clearMono();
+      const pose = mapping[k];
+      performPose(pose, () => {
+        if (pose === calls[idx]) {
+          idx++;
+          if (idx >= calls.length) { hideCall(); done(true); return; }
+        } else if (opt.freeExplore) {
+          showMono([pick(opt.missLines)], () => {});
+        } else {
+          seMiss();
+          showMono([pick(opt.missLines)], () => {});
+          idx = 0; callText();
+        }
+        onPull = handle;
+      });
+    }
+    callText();
+    onPull = handle;
+  }
+
+  // ---------- 幕 ----------
+  const OK_LINES = ['よっ、お見事！', 'いよっ、名人！', 'ようよう、糸さばきが 板に ついてきた'];
+  function act0() {  // 前口上＋ためし引き
+    fadeScene(IMG('barker'), () => showMono([
+      'えー、お立ち会い。当座は ぜんまい仕掛けの 操り一座',
+      '糸は よん本。引けば 人形が 芸を いたします',
+      '種も 仕掛けも ぜんぶ 見えたまま。それが うちの 売りで ござい',
+    ], () => {
+      fadeScene(IMG('neutral'), () => {
+        buildStrings();
+        showMono(['ためしに どれか 一本、引いて ごらんなさい'], () => {});
+        onPull = k => { onPull = null; clearMono(); performPose(mapping[k], () => act1(0)); };
+        if (PEEK !== null) strings.firstChild.click();
+      });
+    }));
+  }
+
+  const ACT1 = [ ['ojigi'], ['kururi', 'banzai'], ['pachi', 'ojigi', 'kururi'] ];
+  const ACT1_BG = ['neutral', 'gears', 'audience'];   // 節ごとに舞台を変える（飽き回避）
+  function act1(r) {
+    if (r >= ACT1.length) { act2(0); return; }
+    clearMono();
+    const intro = ['では 本番。', 'お次は ふた続き。舞台は 歯車の国', '仕上げは みっつ。客席の みなさま——よく 見ると 人形さんで'][r];
+    fadeScene(IMG(ACT1_BG[r]), () => showMono([intro], () => {
+      playRound(ACT1[r], {
+        missLines: ['おっと、手元が 狂ったかね。もう一度 同じ節を どうぞ'],
+      }, () => {
+        showMono([OK_LINES[r]], () => setTimeout(() => act1(r + 1), 900));
+      });
+      if (PEEK !== null) autoSolve(ACT1[r]);
+    }));
+  }
+
+  function shuffleMapping() {  // 巡回置換（必ず全部ずれる）
+    const rot = ORDER.slice(1).concat(ORDER[0]);
+    const m = {};
+    ORDER.forEach((k, i) => m[k] = mapping[rot[i]]);
+    mapping = m;
+  }
+  const ACT2 = [ ['ojigi'], ['banzai', 'pachi'] ];
+  function act2(r) {
+    clearMono();
+    if (r === 0) {
+      fadeScene(IMG('arere'), () => showMono([
+        '……さて。夜も 更けて まいりますと、からくりに 妙な 癖が 出ます',
+      ], () => { shuffleMapping(); round(); }));
+    } else if (r >= ACT2.length) {
+      showMono(['……ようやった。だが 妙だとは 思わんかね', '糸の いうことを、あんたが 聞いて いなさる'],
+        () => setTimeout(act3, 1100));
+      return;
+    } else {
+      showMono(['癖は 直りません。直らないまま、参ります'], () => { shuffleMapping(); round(); });
+    }
+    function round() {
+      playRound(ACT2[r], {
+        freeExplore: true,
+        missLines: ['……おや？ 妙だね。糸は 嘘を つかない はずだが', 'まあ、引いてみりゃ 分かることで'],
+      }, () => {
+        if (r === 0) showMono(['ほう、見つけなすった'], () => setTimeout(() => act2(r + 1), 900));
+        else act2(r + 1);
+      });
+      if (PEEK !== null) autoSolve(ACT2[r]);
+    }
+  }
+
+  function act3() {
+    clearMono(); onPull = null;
+    fadeScene(IMG('reversal'), () => showMono([
+      'ときに お立ち会い。その糸——',
+      'どちらから 垂れて いるか、確かめなすったか',
+    ], async () => {
+      strings.classList.add('flip');           // 糸が頭上に
+      fadeScene(IMG('barker'));
+      await wait(1600);
+      showCall('——おじぎを 一丁！');
+      await wait(900);
+      tugSelf(0);                              // 糸がひとりでに動く
+      view.style.transform = 'translateY(6%) rotate(.8deg)';  // 画面＝自分がおじぎ
+      seClack();
+      await wait(1400);
+      view.style.transform = '';
+      hideCall();
+      showMono(['いよっ、お見事。……なに、あんたが 引いたんじゃ ない？', 'はて、では 誰が'], async () => {
+        await wait(400);
+        showCall('——くるりと 一回り！');
+        await wait(900);
+        tugSelf(1);
+        view.style.transition = 'transform 2.6s cubic-bezier(.45,0,.35,1)';
+        view.style.transform = 'rotate(360deg) scale(1.04)';
+        await wait(2700);
+        view.style.transition = 'none'; view.style.transform = '';
+        void view.offsetWidth;                       // 逆回転させずに0度へ戻す
+        view.style.transition = 'transform 1.2s cubic-bezier(.4,0,.4,1)';
+        hideCall();
+        slack();
+      });
+    }));
+  }
+  function tugSelf(i) {
+    const s = strings.children[i];
+    if (!s) return;
+    s.classList.add('pull'); setTimeout(() => s.classList.remove('pull'), 420);
+  }
+  function slack() {  // ぜんまいが緩む
+    fadeScene(IMG('spring'), async () => {
+      dim.style.opacity = .35;
+      const f = setInterval(() => { bgm.volume = Math.max(0, bgm.volume - .04); if (bgm.volume <= 0) { bgm.pause(); clearInterval(f); } }, 130);
+      await wait(1500);
+      fadeScene(IMG('slump'), () => showMono([
+        '……ぜんまいが 切れかかって おります',
+        'ここで お開きと するか、それとも',
+      ], offerKey));
+    });
+  }
+  function offerKey() {
+    strings.classList.remove('flip'); strings.innerHTML = '';
+    fadeScene(IMG('key'), () => {
+      ui.innerHTML = ''; ui.classList.add('on');
+      const wind = document.createElement('button'); wind.className = 'cbtn'; wind.textContent = 'ねじを まく';
+      const no = document.createElement('button'); no.className = 'cbtn ghost'; no.textContent = 'まかない';
+      let dodge = 0;
+      const flee = e => {
+        e.stopPropagation(); e.preventDefault();
+        dodge++;
+        if (dodge > 3) { no.style.transition = 'opacity 1.2s'; no.style.opacity = 0; no.style.pointerEvents = 'none';
+          showMono(['……という 仕掛けには なって おりませんで'], () => {}); return; }
+        no.style.transform = `translate(${(Math.random() * 44 - 22).toFixed(0)}vh, ${(Math.random() * -16 - 4).toFixed(0)}vh)`;
+      };
+      no.addEventListener('mouseenter', flee);
+      no.addEventListener('touchstart', flee, { passive: false });
+      no.addEventListener('click', flee);
+      wind.addEventListener('click', e => {
+        e.stopPropagation(); clearMono(); ui.classList.remove('on');
+        seWind(8);
+        setTimeout(startEnding, 1100);
+      });
+      ui.appendChild(wind); ui.appendChild(no);
+      if (PEEK !== null) setTimeout(() => wind.click(), 800);
+    });
+  }
+
+  // ---------- エンディング（ending.mp3 = 原曲119.9s〜 / SRT実測−119.9s） ----------
+  const LYRICS = [
+    { t: 0.18,  e: 3.62,  x: 'それでも 朝が来りゃ 巻かれて',     img: 'end1' },
+    { t: 3.62,  e: 7.27,  x: 'また 踊るのさ ——仕方ないね',      img: 'end1' },
+    { t: 7.30,  e: 10.60, x: 'からくり くられ くるくる くるり',  img: 'end2' },
+    { t: 10.60, e: 14.36, x: '泣きべそ隠して おどけて見せて',    img: 'end3' },
+    { t: 14.38, e: 17.70, x: '操り つられ 果てない輪舞',        img: 'end4' },
+    { t: 17.73, e: 21.90, x: '今日も廻るよ ほら また 一回り',    img: 'end4' },
+    { t: 21.93, e: 27.43, x: 'お後がよろしいようで——',          img: 'end5' },
+    { t: 27.46, e: 34.45, x: 'ねじを どうぞ もう一巻き',        img: 'key' },
+  ];
+  function startEnding() {
+    busy = true;
+    const ov = $('ending'), ly = $('elyric'), bg = $('endbg');
+    ov.style.pointerEvents = 'auto'; ov.style.opacity = 1;
+    endTrack.volume = 1; endTrack.play().catch(() => {});
+    let li = -1;
+    const tick = () => {
+      const t = endTrack.currentTime;
+      const cur = LYRICS.findIndex(L => t >= L.t && t <= L.e);
+      if (cur !== li) {
+        if (cur === -1) ly.style.opacity = 0;
+        else {
+          ly.textContent = LYRICS[cur].x; ly.style.opacity = 1;
+          if (bg.src.indexOf(LYRICS[cur].img) === -1) bg.src = IMG(LYRICS[cur].img);
+        }
+        li = cur;
+      }
+      if (!endTrack.ended) requestAnimationFrame(tick);
+      else { ly.style.opacity = 0; setTimeout(() => $('endcard').style.display = 'flex', 1500); }
+    };
+    requestAnimationFrame(tick);
+    $('again').addEventListener('click', () => location.reload());
+  }
+
+  // ---------- PEEK用オートソルバ ----------
+  function autoSolve(calls) {
+    let i = 0;
+    const iv = setInterval(() => {
+      if (busy) return;
+      if (!onPull || i >= calls.length) { clearInterval(iv); return; }
+      const k = ORDER.find(key => mapping[key] === calls[i]);
+      const el = [...strings.children].find(s => s.dataset.key === k);
+      if (el) { i++; el.click(); }
+    }, 600);
+  }
+
+  // ---------- 起動 ----------
+  const toLoad = ['title','barker','neutral','ojigi','kururi','banzai','pachi',
+                  'arere','gears','audience','reversal','spring','slump','key',
+                  'end1','end2','end3','end4','end5'];
+  let loaded = 0;
+  const startBtn = $('start');
+  toLoad.forEach(n => { const im = new Image(); im.onload = im.onerror = () => {
+    loaded++;
+    startBtn.textContent = loaded >= toLoad.length ? '— 幕を あける —' : `よみこみちゅう… ${Math.round(loaded/toLoad.length*100)}%`;
+    if (loaded >= toLoad.length) { startBtn.disabled = false; if (PEEK !== null) startBtn.click(); }
+  }; im.src = IMG(n); });
+
+  startBtn.addEventListener('click', () => {
+    $('title').style.opacity = 0;
+    setTimeout(() => $('title').style.display = 'none', 1500);
+    bgm.play().catch(() => {});
+    buildStrings();
+    if (PEEK === 'act2') { onPull = null; act2(0); }
+    else if (PEEK === 'act3') act3();
+    else if (PEEK === 'ending') startEnding();
+    else act0();
+  });
+})();
+</script>
+</body>
+</html>
